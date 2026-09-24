@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Play } from "pixelarticons/react";
-import { gradeFor } from "../scoring/curve";
 
 export function randomScore(): number {
   return 60 + Math.floor(Math.random() * 41);
@@ -10,16 +9,134 @@ const ROLL_MS = 4000;
 const REVEAL_MS = 8000;
 const CELEBRATE_ABOVE = 80;
 
-const SCORE_COMMENTS: { min: number; text: string }[] = [
-  { min: 95, text: "A star is born!" },
-  { min: 85, text: "Crowd favorite!" },
-  { min: 70, text: "Solid performance!" },
-  { min: 0, text: "Keep practicing!" },
+type GradeTone = "gold" | "cyan" | "muted" | "red";
+
+interface GradeTier {
+  min: number;
+  badge: string;
+  tone: GradeTone;
+  comments: string[];
+}
+
+// Ten videoke tiers over the 60..100 roll; comments roast harder the lower you land.
+// Roast copy is half Taglish by design (Ivan's call) — badges and UI labels stay English.
+export const GRADE_TIERS: GradeTier[] = [
+  {
+    min: 96,
+    badge: "PERFECT!",
+    tone: "gold",
+    comments: [
+      "Walang paltos — perpekto!",
+      "Grabe, ibang level!",
+      "Legendary. Frame this score.",
+    ],
+  },
+  {
+    min: 92,
+    badge: "AMAZING",
+    tone: "gold",
+    comments: [
+      "The mic owes you money.",
+      "Crowd went absolutely feral.",
+      "Ang galing! Bongga talaga.",
+    ],
+  },
+  {
+    min: 88,
+    badge: "GREAT",
+    tone: "gold",
+    comments: [
+      "Big voice energy detected.",
+      "Lakas ng dating, panalo!",
+      "Kinabog mo silang lahat!",
+    ],
+  },
+  {
+    min: 84,
+    badge: "SOLID",
+    tone: "gold",
+    comments: [
+      "Smooth. Suspiciously smooth.",
+      "Parang studio version — konti na lang!",
+      "Queue another one, you're on a roll.",
+    ],
+  },
+  {
+    min: 80,
+    badge: "NICE",
+    tone: "cyan",
+    comments: [
+      "Respectable. Almost too respectable.",
+      "Pasok sa pusta!",
+      "Hataw talaga — may puso.",
+    ],
+  },
+  {
+    min: 76,
+    badge: "NOT BAD",
+    tone: "cyan",
+    comments: [
+      "You've done worse. We all saw it.",
+      "Half hero, half karaoke victim.",
+      "Puso lang ang kulang, ika nga.",
+    ],
+  },
+  {
+    min: 72,
+    badge: "PASSABLE",
+    tone: "cyan",
+    comments: [
+      "The dog liked it. The dog likes everything.",
+      "May melodya naman kahit papaano.",
+      "Konting practice, champion ka na!",
+    ],
+  },
+  {
+    min: 68,
+    badge: "MEH",
+    tone: "muted",
+    comments: [
+      "The mic is filing a complaint.",
+      "Notes were suggested, not sung.",
+      "Nakakaawa naman ang mic.",
+    ],
+  },
+  {
+    min: 64,
+    badge: "OOF",
+    tone: "red",
+    comments: [
+      "The neighbors have questions.",
+      "Grabe, dinurog mo ang kanta.",
+      "Kapitbahay, pasensya na po.",
+    ],
+  },
+  {
+    min: 60,
+    badge: "YIKES",
+    tone: "red",
+    comments: [
+      "The mic survived. Barely.",
+      "That melody did nothing to you.",
+      "Isa pa — para sa science!",
+    ],
+  },
 ];
 
-function commentFor(score: number): string {
-  return SCORE_COMMENTS.find((c) => score >= c.min)?.text ?? "";
+export function tierFor(score: number): GradeTier {
+  return GRADE_TIERS.find((t) => score >= t.min) ?? GRADE_TIERS[GRADE_TIERS.length - 1]!;
 }
+
+function pickComment(tier: GradeTier): string {
+  return tier.comments[Math.floor(Math.random() * tier.comments.length)] ?? "";
+}
+
+const TONE_CLASS: Record<GradeTone, string> = {
+  gold: "text-gold-500 [filter:drop-shadow(0_0_10px_rgba(255,210,62,.5))]",
+  cyan: "text-cyan-500 [filter:drop-shadow(0_0_10px_rgba(62,240,255,.45))]",
+  muted: "text-arc-500",
+  red: "text-red-500 [filter:drop-shadow(0_0_10px_rgba(255,61,90,.45))]",
+};
 
 interface Props {
   score: number;
@@ -40,11 +157,14 @@ export function ScoreReveal({
 }: Props) {
   const [rolling, setRolling] = useState(true);
   const [shown, setShown] = useState(60);
+  const [comment, setComment] = useState("");
   const [countdown, setCountdown] = useState(REVEAL_MS / 1000);
 
   useEffect(() => {
     if (!rolling) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setShown(score);
+      setComment(pickComment(tierFor(score)));
       setRolling(false);
       return;
     }
@@ -54,6 +174,7 @@ export function ScoreReveal({
       const t = Math.min(1, (performance.now() - start) / ROLL_MS);
       if (t >= 1) {
         setShown(score);
+        setComment(pickComment(tierFor(score)));
         setRolling(false);
         return;
       }
@@ -77,6 +198,7 @@ export function ScoreReveal({
   }, [rolling, onAdvance]);
 
   const celebrate = !rolling && score > CELEBRATE_ABOVE;
+  const tier = tierFor(score);
 
   return (
     <div
@@ -98,22 +220,16 @@ export function ScoreReveal({
       <span
         data-testid="score-reveal-grade"
         className={`font-press text-2xl [text-shadow:3px_3px_0_var(--color-crt-000)] ${
-          rolling
-            ? "opacity-0"
-            : celebrate
-              ? "text-gold-500 [filter:drop-shadow(0_0_10px_rgba(255,210,62,.5))] score-celebrate"
-              : score >= 85
-                ? "text-gold-500 [filter:drop-shadow(0_0_10px_rgba(255,210,62,.5))]"
-                : "text-cyan-500 [filter:drop-shadow(0_0_10px_rgba(62,240,255,.45))]"
+          rolling ? "opacity-0" : celebrate ? `${TONE_CLASS[tier.tone]} score-celebrate` : TONE_CLASS[tier.tone]
         }`}
       >
-        {gradeFor(score)}
+        {tier.badge}
       </span>
       {!rolling && (
         <>
           <span className="text-lg text-arc-100">
             Nice one, <span className="font-semibold">{nickname}</span> —{" "}
-            <span className="text-arc-500">{commentFor(score)}</span>
+            <span className="text-arc-500">{comment}</span>
           </span>
           {nextTitle && (
             <div className="flex flex-col items-center gap-2">
