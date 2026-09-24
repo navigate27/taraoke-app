@@ -61,88 +61,92 @@ export function PlayerControls({
       aria-label="Player controls"
       data-testid="transport-panel"
     >
-      <div className="flex items-center gap-4">
-        <button
-          data-testid="transport-btn-repeat"
-          onClick={onToggleRepeat}
-          disabled={!canControl}
-          aria-pressed={repeatOn}
-          aria-label="Repeat this song"
-          data-tip={repeatOn ? "Repeat on" : "Repeat"}
-          className={`btn btn-ghost h-14 w-14 p-0 text-[12px] disabled:opacity-30 ${
-            repeatOn ? `text-cyan-500` : "text-arc-100"
-          }`}
-        >
-          <Reload className="h-5 w-5" />
-        </button>
-        <button
-          data-testid="transport-btn-back"
-          onClick={() => onSeek(-10)}
-          disabled={!canControl}
-          aria-label="Back 10 seconds"
-          className="btn btn-ghost h-14 px-3 text-[10px] text-arc-100 disabled:opacity-30"
-        >
-          -10
-        </button>
-        <button
-          data-testid="transport-btn-play"
-          onClick={onTogglePlay}
-          disabled={!canControl}
-          aria-label={playing ? "Pause" : "Play"}
-          data-tip={playing ? "Pause" : "Play"}
-          className="btn btn-primary h-16 w-16 text-[14px] disabled:opacity-30"
-        >
-          {playing ? "❚❚" : "▶"}
-        </button>
-        <button
-          data-testid="transport-btn-forward"
-          onClick={() => onSeek(10)}
-          disabled={!canControl}
-          aria-label="Forward 10 seconds"
-          className="btn btn-ghost h-14 px-3 text-[10px] text-arc-100 disabled:opacity-30"
-        >
-          +10
-        </button>
-        <button
-          data-testid="transport-btn-next"
-          onClick={onNext}
-          disabled={!canControl}
-          aria-label="Next — play the next song"
-          data-tip="Next"
-          className="btn btn-ghost h-14 w-14 p-0 text-[12px] text-arc-100 disabled:opacity-30"
-        >
-          ⏭
-        </button>
-      </div>
-      <div className="flex items-center gap-4">
-        {hasAudio && (
+      <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-4">
+        <div className="justify-self-start">
+          {hasAudio && (
+            <button
+              data-testid="transport-btn-mute"
+              onClick={onToggleMute}
+              disabled={!hasSong}
+              aria-label={muted ? "Unmute" : "Mute"}
+              data-tip={muted ? "Unmute" : "Mute"}
+              className={`btn btn-ghost h-12 px-4 disabled:opacity-30 ${
+                muted ? "text-arc-500 opacity-70" : `text-cyan-500`
+              }`}
+            >
+              {muted ? <VolumeX className="h-5 w-5" /> : <IconSoundOn className="h-5 w-5" />}
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
           <button
-            data-testid="transport-btn-mute"
-            onClick={onToggleMute}
-            disabled={!hasSong}
-            aria-label={muted ? "Unmute" : "Mute"}
-            data-tip={muted ? "Unmute" : "Mute"}
-            className={`btn btn-ghost h-12 px-4 disabled:opacity-30 ${
-              muted ? "text-arc-500 opacity-70" : `text-cyan-500`
+            data-testid="transport-btn-repeat"
+            onClick={onToggleRepeat}
+            disabled={!canControl}
+            aria-pressed={repeatOn}
+            aria-label="Repeat this song"
+            data-tip={repeatOn ? "Repeat on" : "Repeat"}
+            className={`btn btn-ghost h-14 w-14 p-0 text-[12px] disabled:opacity-30 ${
+              repeatOn ? `text-cyan-500` : "text-arc-100"
             }`}
           >
-            {muted ? <VolumeX className="h-5 w-5" /> : <IconSoundOn className="h-5 w-5" />}
+            <Reload className="h-5 w-5" />
           </button>
-        )}
-        {fullscreen && (
           <button
-            data-testid="transport-btn-fullscreen"
-            onClick={toggleFullscreen}
-            disabled={!hasSong}
-            aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-            data-tip={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-            className={`btn btn-ghost h-12 px-4 disabled:opacity-30 ${
-              isFullscreen ? `text-cyan-500` : "text-arc-100"
-            }`}
+            data-testid="transport-btn-back"
+            onClick={() => onSeek(-10)}
+            disabled={!canControl}
+            aria-label="Back 10 seconds"
+            className="btn btn-ghost h-14 px-3 text-[10px] text-arc-100 disabled:opacity-30"
           >
-            <Scale className="h-5 w-5" />
+            -10
           </button>
-        )}
+          <button
+            data-testid="transport-btn-play"
+            onClick={onTogglePlay}
+            disabled={!canControl}
+            aria-label={playing ? "Pause" : "Play"}
+            data-tip={playing ? "Pause" : "Play"}
+            className="btn btn-primary h-16 w-16 text-[14px] disabled:opacity-30"
+          >
+            {playing ? "❚❚" : "▶"}
+          </button>
+          <button
+            data-testid="transport-btn-forward"
+            onClick={() => onSeek(10)}
+            disabled={!canControl}
+            aria-label="Forward 10 seconds"
+            className="btn btn-ghost h-14 px-3 text-[10px] text-arc-100 disabled:opacity-30"
+          >
+            +10
+          </button>
+          <button
+            data-testid="transport-btn-next"
+            onClick={onNext}
+            disabled={!canControl}
+            aria-label="Next — play the next song"
+            data-tip="Next"
+            className="btn btn-ghost h-14 w-14 p-0 text-[12px] text-arc-100 disabled:opacity-30"
+          >
+            ⏭
+          </button>
+        </div>
+        <div className="justify-self-end">
+          {fullscreen && (
+            <button
+              data-testid="transport-btn-fullscreen"
+              onClick={toggleFullscreen}
+              disabled={!hasSong}
+              aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              data-tip={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              className={`btn btn-ghost h-12 px-4 disabled:opacity-30 ${
+                isFullscreen ? `text-cyan-500` : "text-arc-100"
+              }`}
+            >
+              <Scale className="h-5 w-5" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
