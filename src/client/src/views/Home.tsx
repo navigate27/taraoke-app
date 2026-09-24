@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { socket } from "../lib/socket";
+import { JukeboxIntro } from "../components/JukeboxIntro";
 import { clearGuest, loadGuest, saveGuest } from "./guest/Guest";
 import { clearHost, loadHost } from "./host/Host";
 
@@ -20,15 +21,28 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
   const [hostError, setHostError] = useState<string | null>(null);
   const [joinNameError, setJoinNameError] = useState<string | null>(null);
   const [joinCodeError, setJoinCodeError] = useState<string | null>(null);
+  const [inserting, setInserting] = useState(false);
+  const [created, setCreated] = useState<{ code: string; token: string } | null>(
+    null,
+  );
+  const [coinInserted, setCoinInserted] = useState(false);
   const savedHost = loadHost();
+
+  useEffect(() => {
+    if (created && coinInserted) {
+      onCreate(created.code, created.token, hostName.trim());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [created, coinInserted]);
 
   function createRoom() {
     if (!hostName.trim()) {
       setHostError("Hostname required");
       return;
     }
+    setInserting(true);
     socket.emit("room:create", (res) => {
-      onCreate(res.code, res.hostToken, hostName.trim());
+      setCreated({ code: res.code, token: res.hostToken });
     });
   }
 
@@ -237,6 +251,8 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
       <p data-testid="home-blink" className="coin-blink font-press text-[9px] text-gold-500">
         Insert coin to start
       </p>
+
+      {inserting && <JukeboxIntro onCoinInserted={() => setCoinInserted(true)} />}
     </main>
   );
 }

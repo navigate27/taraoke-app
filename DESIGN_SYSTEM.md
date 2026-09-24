@@ -179,6 +179,10 @@ One orchestrated moment, few micro-interactions, all respecting
 - **"You're up next" pulse:** a single 2× pulse of the gold glow on the guest's CRT
   callout when their song becomes next. Not a loop.
 - **Insert-coin blink:** steps-blink (no fade) at 1.1s — the only looping animation.
+- **Coin-in-jukebox intro:** when the host's room is created, a full-screen overlay
+  shows a pixel jukebox; a gold coin drops into its slot (Framer Motion, ~1.2s) with a
+  cabinet shake and a neon-arch glow pulse, then the room view takes over. One-shot,
+  no loop.
 - **Press feedback:** buttons translate `3px, 3px` on `:active` with hard-shadow
   collapse — the arcade keypress.
 - Everything else: no parallax, no ambient loops, no scroll-triggered reveals.
