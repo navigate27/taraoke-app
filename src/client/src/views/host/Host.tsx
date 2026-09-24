@@ -171,7 +171,11 @@ export function Host({ code, token, nickname, onExit }: Props) {
     }
     const nowPlaying = state?.nowPlaying;
     if (nowPlaying) {
-      setReveal({ score: randomScore(), nickname: nowPlaying.addedBy });
+      setReveal({
+        score: randomScore(),
+        nickname: nowPlaying.addedBy,
+        nextTitle: state?.queue[0]?.title ?? null,
+      });
     }
   }
 

@@ -8,6 +8,7 @@ import { ScoreReveal } from "../../components/ScoreReveal";
 export interface RevealState {
   score: number;
   nickname: string;
+  nextTitle: string | null;
 }
 
 interface Props {
@@ -108,6 +109,7 @@ export function HostPlayerPanel({
           <ScoreReveal
             score={reveal.score}
             nickname={reveal.nickname}
+            nextTitle={reveal.nextTitle}
             onAdvance={onAdvanceReveal}
           />
         )}

@@ -23,12 +23,14 @@ function commentFor(score: number): string {
 interface Props {
   score: number;
   nickname: string;
+  nextTitle: string | null;
   onAdvance: () => void;
 }
 
-export function ScoreReveal({ score, nickname, onAdvance }: Props) {
+export function ScoreReveal({ score, nickname, nextTitle, onAdvance }: Props) {
   const [rolling, setRolling] = useState(true);
   const [shown, setShown] = useState(60);
+  const [countdown, setCountdown] = useState(REVEAL_MS / 1000);
 
   useEffect(() => {
     if (!rolling) return;
@@ -54,8 +56,14 @@ export function ScoreReveal({ score, nickname, onAdvance }: Props) {
 
   useEffect(() => {
     if (rolling) return;
+    const interval = window.setInterval(() => {
+      setCountdown((c) => c - 1);
+    }, 1000);
     const timer = window.setTimeout(onAdvance, REVEAL_MS);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timer);
+    };
   }, [rolling, onAdvance]);
 
   const celebrate = !rolling && score > CELEBRATE_ABOVE;
@@ -69,7 +77,15 @@ export function ScoreReveal({ score, nickname, onAdvance }: Props) {
       className="crt absolute inset-0 z-20 flex cursor-pointer flex-col items-center justify-center gap-5 rounded-[4px] px-4 text-center"
     >
       <span className="font-press text-[9px] uppercase tracking-[0.12em] text-cyan-500">
-        {rolling ? "Scoring your performance" : "Performance complete"}
+        {rolling ? "Scoring your performance" : "Your score is"}
+      </span>
+      <span
+        data-testid="score-reveal-value"
+        className={`font-press text-8xl text-gold-500 ${
+          celebrate ? "score-celebrate-glow" : "[text-shadow:0_0_18px_rgba(255,210,62,.6),4px_4px_0_var(--color-crt-000)]"
+        }`}
+      >
+        {rolling ? shown : score}
       </span>
       <span
         data-testid="score-reveal-grade"
@@ -85,22 +101,22 @@ export function ScoreReveal({ score, nickname, onAdvance }: Props) {
       >
         {gradeFor(score)}
       </span>
-      <span
-        data-testid="score-reveal-value"
-        className={`font-press text-8xl text-gold-500 ${
-          celebrate ? "score-celebrate-glow" : "[text-shadow:0_0_18px_rgba(255,210,62,.6),4px_4px_0_var(--color-crt-000)]"
-        }`}
-      >
-        {rolling ? shown : score}
-      </span>
       {!rolling && (
         <>
           <span className="text-lg text-arc-100">
             Nice one, <span className="font-semibold">{nickname}</span> —{" "}
             <span className="text-arc-500">{commentFor(score)}</span>
           </span>
+          {nextTitle && (
+            <span
+              data-testid="score-reveal-next"
+              className="max-w-full truncate px-6 text-sm text-arc-500"
+            >
+              Up next: <span className="text-arc-100">{nextTitle}</span>
+            </span>
+          )}
           <span className="font-press text-[9px] uppercase tracking-[0.12em] text-arc-500">
-            Tap for next song
+            Tap for next song · auto in {Math.max(0, countdown)}s
           </span>
         </>
       )}
