@@ -23,7 +23,7 @@ const cache = new Map<string, CacheSlot>();
 
 let innertubePromise: Promise<Innertube> | null = null;
 
-function getInnertube(): Promise<Innertube> {
+export function getInnertube(): Promise<Innertube> {
   if (!innertubePromise) {
     innertubePromise = Innertube.create({
       generate_session_locally: true,
@@ -37,8 +37,29 @@ function getInnertube(): Promise<Innertube> {
 
 const CLIENT_FALLBACK = ["WEB", "ANDROID", "MWEB"] as const;
 
-async function resolveStream(videoId: string): Promise<ResolvedStream> {
-  const yt = await getInnertube();
+// One decipher attempt per candidate format — a format with a direct url always
+// wins; decipher failures (evaluator/quota issues) just skip the candidate.
+async function decipherUrl(
+  yt: import("youtubei.js").Innertube,
+  format: { url?: string; decipher: (player?: import("youtubei.js").Player) => Promise<string> },
+): Promise<string | null> {
+  if (format.url) return format.url;
+  try {
+    return (await format.decipher(yt.session.player)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+interface MuxedResolution {
+  url: string;
+  expiresAt: number;
+}
+
+async function resolveMuxed(
+  yt: import("youtubei.js").Innertube,
+  videoId: string,
+): Promise<MuxedResolution> {
   let lastError: Error | null = null;
   for (const client of CLIENT_FALLBACK) {
     try {
@@ -54,27 +75,33 @@ async function resolveStream(videoId: string): Promise<ResolvedStream> {
         throw new Error("No streaming data — live or restricted video");
       }
       const muxed = streaming.formats.filter((f) => f.has_video && f.has_audio);
-      const pick =
-        muxed.find((f) => f.itag === 22) ??
-        muxed.find((f) => f.itag === 18) ??
-        muxed.sort((a, b) => (b.bitrate ?? 0) - (a.bitrate ?? 0))[0];
-      if (!pick) continue;
-      const url = pick.url ?? (await pick.decipher(yt.session.player));
-      if (!url) continue;
-      const hardExpiry = streaming.expires
-        ? streaming.expires.getTime()
-        : Date.now() + MAX_TTL_MS;
-      return {
-        url,
-        expiresAt: Math.min(Date.now() + MAX_TTL_MS, hardExpiry) - TTL_MARGIN_MS,
-      };
+      const candidates = [
+        muxed.find((f) => f.itag === 22),
+        muxed.find((f) => f.itag === 18),
+        ...muxed.sort((a, b) => (b.bitrate ?? 0) - (a.bitrate ?? 0)),
+      ];
+      for (const pick of candidates) {
+        if (!pick) continue;
+        const url = await decipherUrl(yt, pick);
+        if (!url) continue;
+        const hardExpiry = streaming.expires
+          ? streaming.expires.getTime()
+          : Date.now() + MAX_TTL_MS;
+        return {
+          url,
+          expiresAt: Math.min(Date.now() + MAX_TTL_MS, hardExpiry) - TTL_MARGIN_MS,
+        };
+      }
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
     }
   }
-  throw (
-    lastError ?? new Error("No progressive video+audio format available")
-  );
+  throw lastError ?? new Error("No progressive video+audio format available");
+}
+
+async function resolveStream(videoId: string): Promise<ResolvedStream> {
+  const yt = await getInnertube();
+  return resolveMuxed(yt, videoId);
 }
 
 function getStream(videoId: string): Promise<ResolvedStream> {

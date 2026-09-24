@@ -64,6 +64,8 @@ export function Host({ code, token, nickname, onExit }: Props) {
   const resumeRef = useRef<{ positionSec: number; playing: boolean } | null>(null);
   const repeatRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const nowPlayingRef = useRef<QueueItem | null>(null);
+  const firstQueuedRef = useRef<QueueItem | null>(null);
   const videoId = state?.nowPlaying?.videoId ?? null;
 
   function showToast(message: string) {
@@ -77,7 +79,11 @@ export function Host({ code, token, nickname, onExit }: Props) {
       if (!res.ok) onExit();
     });
     const pingTimer = window.setInterval(() => socket.emit("room:ping"), 25000);
-    const onRoomState = (s: PublicRoomState) => setState(s);
+    const onRoomState = (s: PublicRoomState) => {
+      setState(s);
+      nowPlayingRef.current = s.nowPlaying;
+      firstQueuedRef.current = s.queue[0] ?? null;
+    };
     const onParticipantJoined = (nickname: string) => {
       showToast(`${nickname} joined the room`);
     };
@@ -108,7 +114,19 @@ export function Host({ code, token, nickname, onExit }: Props) {
         return;
       }
       const video = videoRef.current;
-      if (!video) return;
+      if (!video) {
+        if (
+          action.type === "play" &&
+          !nowPlayingRef.current &&
+          firstQueuedRef.current
+        ) {
+          socket.emit("host:action", token, {
+            type: "play-now",
+            itemId: firstQueuedRef.current.id,
+          });
+        }
+        return;
+      }
       if (action.type === "play") video.play().catch(() => {});
       else if (action.type === "pause") video.pause();
       else if (action.type === "seek" && video.readyState >= 1) {

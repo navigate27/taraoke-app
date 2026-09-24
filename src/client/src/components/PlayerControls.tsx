@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from "react";
-import { MoreHorizontal, Reload, Scale, VolumeX } from "pixelarticons/react";
+import { Reload, Scale, VolumeX } from "pixelarticons/react";
 
 function IconSoundOn({ className }: { className?: string }) {
   return (
@@ -14,8 +14,10 @@ interface Props {
   muted: boolean;
   hasSong: boolean;
   canControl: boolean;
+  hasAudio?: boolean;
+  fullscreen?: boolean;
   repeatOn: boolean;
-  containerRef: RefObject<HTMLDivElement | null>;
+  containerRef?: RefObject<HTMLDivElement | null>;
   onTogglePlay: () => void;
   onToggleRepeat: () => void;
   onToggleMute: () => void;
@@ -28,6 +30,8 @@ export function PlayerControls({
   muted,
   hasSong,
   canControl,
+  hasAudio = true,
+  fullscreen = true,
   repeatOn,
   containerRef,
   onTogglePlay,
@@ -36,7 +40,6 @@ export function PlayerControls({
   onSeek,
   onNext,
 }: Props) {
-  const [moreOpen, setMoreOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -46,7 +49,7 @@ export function PlayerControls({
   }, []);
 
   function toggleFullscreen() {
-    const el = containerRef.current;
+    const el = containerRef?.current;
     if (!el) return;
     if (document.fullscreenElement) document.exitFullscreen();
     else el.requestFullscreen?.();
@@ -54,7 +57,7 @@ export function PlayerControls({
 
   return (
     <div
-      className="relative flex items-center justify-center gap-4"
+      className="flex flex-col items-center gap-3"
       aria-label="Player controls"
       data-testid="transport-panel"
     >
@@ -77,7 +80,7 @@ export function PlayerControls({
           onClick={() => onSeek(-10)}
           disabled={!canControl}
           aria-label="Back 10 seconds"
-          className="btn btn-ghost hidden h-14 px-3 text-[10px] text-arc-100 disabled:opacity-30 lg:block"
+          className="btn btn-ghost h-14 px-3 text-[10px] text-arc-100 disabled:opacity-30"
         >
           -10
         </button>
@@ -96,7 +99,7 @@ export function PlayerControls({
           onClick={() => onSeek(10)}
           disabled={!canControl}
           aria-label="Forward 10 seconds"
-          className="btn btn-ghost hidden h-14 px-3 text-[10px] text-arc-100 disabled:opacity-30 lg:block"
+          className="btn btn-ghost h-14 px-3 text-[10px] text-arc-100 disabled:opacity-30"
         >
           +10
         </button>
@@ -111,107 +114,35 @@ export function PlayerControls({
           ⏭
         </button>
       </div>
-      <div className="absolute right-0 flex items-center gap-4">
-        <button
-          data-testid="transport-btn-mute"
-          onClick={onToggleMute}
-          disabled={!hasSong}
-          aria-label={muted ? "Unmute" : "Mute"}
-          data-tip={muted ? "Unmute" : "Mute"}
-          data-tip-side="left"
-          className={`btn btn-ghost hidden h-14 px-3 disabled:opacity-30 lg:block ${
-            muted ? "text-arc-500 opacity-70" : `text-cyan-500`
-          }`}
-        >
-          {muted ? <VolumeX className="h-5 w-5" /> : <IconSoundOn className="h-5 w-5" />}
-        </button>
-        <button
-          data-testid="transport-btn-fullscreen"
-          onClick={toggleFullscreen}
-          disabled={!hasSong}
-          aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-          data-tip={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-          data-tip-side="left"
-          className={`btn btn-ghost hidden h-14 px-3 disabled:opacity-30 lg:block ${
-            isFullscreen ? `text-cyan-500` : "text-arc-100"
-          }`}
-        >
-          <Scale className="h-5 w-5" />
-        </button>
-        <div className="relative lg:hidden">
+      <div className="flex items-center gap-4">
+        {hasAudio && (
           <button
-            data-testid="transport-btn-more"
-            onClick={() => setMoreOpen((o) => !o)}
+            data-testid="transport-btn-mute"
+            onClick={onToggleMute}
             disabled={!hasSong}
-            aria-expanded={moreOpen}
-            aria-haspopup="true"
-            aria-label="More options"
-            data-tip="More options"
-            data-tip-side="left"
-            className={`btn btn-ghost h-14 w-14 p-0 disabled:opacity-30 ${
-              moreOpen ? `text-cyan-500` : "text-arc-100"
+            aria-label={muted ? "Unmute" : "Mute"}
+            data-tip={muted ? "Unmute" : "Mute"}
+            className={`btn btn-ghost h-12 px-4 disabled:opacity-30 ${
+              muted ? "text-arc-500 opacity-70" : `text-cyan-500`
             }`}
           >
-            <MoreHorizontal className="h-5 w-5" />
+            {muted ? <VolumeX className="h-5 w-5" /> : <IconSoundOn className="h-5 w-5" />}
           </button>
-          {moreOpen && (
-            <div
-              role="menu"
-              aria-label="More player options"
-              data-testid="transport-menu"
-              className="absolute bottom-full right-0 z-30 mb-3 flex items-center gap-2 rounded-[4px] border-[3px] border-cab-700 bg-cab-800 p-2 [box-shadow:5px_5px_0_#05030C]"
-            >
-              <button
-                role="menuitem"
-                data-testid="transport-btn-back-menu"
-                onClick={() => onSeek(-10)}
-                disabled={!canControl}
-                aria-label="Back 10 seconds"
-                className="btn btn-ghost h-12 px-3 text-[10px] text-arc-100 disabled:opacity-30"
-              >
-                -10
-              </button>
-              <button
-                role="menuitem"
-                data-testid="transport-btn-forward-menu"
-                onClick={() => onSeek(10)}
-                disabled={!canControl}
-                aria-label="Forward 10 seconds"
-                className="btn btn-ghost h-12 px-3 text-[10px] text-arc-100 disabled:opacity-30"
-              >
-                +10
-              </button>
-              <button
-                role="menuitem"
-                data-testid="transport-btn-mute-menu"
-                onClick={onToggleMute}
-                disabled={!hasSong}
-                aria-label={muted ? "Unmute" : "Mute"}
-                data-tip={muted ? "Unmute" : "Mute"}
-                data-tip-side="left"
-                className={`btn btn-ghost h-12 w-12 p-0 disabled:opacity-30 ${
-                  muted ? "text-arc-500 opacity-70" : `text-cyan-500`
-                }`}
-              >
-                {muted ? <VolumeX className="h-5 w-5" /> : <IconSoundOn className="h-5 w-5" />}
-              </button>
-              <button
-                role="menuitem"
-                data-testid="transport-btn-fullscreen-menu"
-                onClick={toggleFullscreen}
-                disabled={!hasSong}
-                aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                data-tip={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                data-tip-side="left"
-                className={`btn btn-ghost h-12 w-12 p-0 disabled:opacity-30 ${
-                  isFullscreen ? `text-cyan-500` : "text-arc-100"
-                }`}
-              >
-                <Scale className="h-5 w-5" />
-              </button>
-            </div>
-          )}
-        </div>
+        )}
+        {fullscreen && (
+          <button
+            data-testid="transport-btn-fullscreen"
+            onClick={toggleFullscreen}
+            disabled={!hasSong}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            data-tip={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            className={`btn btn-ghost h-12 px-4 disabled:opacity-30 ${
+              isFullscreen ? `text-cyan-500` : "text-arc-100"
+            }`}
+          >
+            <Scale className="h-5 w-5" />
+          </button>
+        )}
       </div>
     </div>
   );

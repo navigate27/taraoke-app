@@ -47,20 +47,11 @@ export function Guest({ code, nickname, onExit }: Props) {
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(true);
   const [repeatOn, setRepeatOn] = useState(false);
-  const [videoVisible, setVideoVisible] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const localPlayingRef = useRef(false);
-  const mutedRef = useRef(true);
-  const lastLoadedRef = useRef<string | null>(null);
-  const pendingRef = useRef<{ videoId: string; playing: boolean } | null>(null);
-  const latestStateRef = useRef<PlayerState | null>(null);
-  const errorRetriedRef = useRef(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     socket.emit("room:join", code, nickname, null, (res) => {
@@ -76,38 +67,17 @@ export function Guest({ code, nickname, onExit }: Props) {
       showToast(`${left} left the room`);
     };
     const onPlayerState = (p: PlayerState) => {
-      latestStateRef.current = p;
       setPosition(p.positionSec);
       setDuration(p.durationSec ?? 0);
       setRepeatOn(p.repeatOn);
       if (!p.videoId) {
-        lastLoadedRef.current = null;
-        pendingRef.current = null;
         localPlayingRef.current = false;
         setPlaying(false);
         return;
       }
-      if (p.videoId !== lastLoadedRef.current) {
-        lastLoadedRef.current = p.videoId;
-        pendingRef.current = { videoId: p.videoId, playing: p.playing };
-        localPlayingRef.current = p.playing;
-        setPlaying(p.playing);
-        return;
-      }
-      const video = videoRef.current;
-      if (video && video.readyState >= 1) {
-        const local = video.currentTime || 0;
-        if (p.playing && Math.abs(local - p.positionSec) > 2) {
-          video.currentTime = p.positionSec;
-        }
-      }
       if (p.playing !== localPlayingRef.current) {
         localPlayingRef.current = p.playing;
         setPlaying(p.playing);
-        if (video) {
-          if (p.playing) video.play().catch(() => {});
-          else video.pause();
-        }
       }
     };
     socket.on("roomState", onRoomState);
@@ -125,50 +95,10 @@ export function Guest({ code, nickname, onExit }: Props) {
     };
   }, [code, nickname, onExit]);
 
-  const videoId = state?.nowPlaying?.videoId ?? null;
-
-  useEffect(() => {
-    errorRetriedRef.current = false;
-  }, [videoId]);
-
-  function handleLoadedMetadata() {
-    const video = videoRef.current;
-    const pending = pendingRef.current;
-    if (!video || !pending) return;
-    pendingRef.current = null;
-    const p = latestStateRef.current;
-    const startAt = p && p.videoId === pending.videoId ? p.positionSec : 0;
-    if (startAt > 0.5) video.currentTime = startAt;
-    if (pending.playing) video.play().catch(() => {});
-    else video.pause();
-  }
-
-  function handleVideoError() {
-    const video = videoRef.current;
-    if (!video || !video.src || errorRetriedRef.current) return;
-    errorRetriedRef.current = true;
-    video.src = `${video.src}${video.src.includes("?") ? "&" : "?"}r=${Date.now()}`;
-    video.play().catch(() => {});
-  }
-
   function showToast(message: string) {
     setToast(message);
     window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), 3000);
-  }
-
-  function toggleMute() {
-    mutedRef.current = !mutedRef.current;
-    const video = videoRef.current;
-    if (video) video.muted = mutedRef.current;
-    setMuted(mutedRef.current);
-  }
-
-  function showVideo() {
-    const p = latestStateRef.current;
-    pendingRef.current =
-      p && p.videoId ? { videoId: p.videoId, playing: p.playing } : null;
-    setVideoVisible(true);
   }
 
   function emitAction(action: GuestAction) {
@@ -176,8 +106,7 @@ export function Guest({ code, nickname, onExit }: Props) {
   }
 
   function seekBy(delta: number) {
-    const current = videoRef.current?.currentTime || position;
-    emitAction({ type: "seek", positionSec: Math.max(0, current + delta) });
+    emitAction({ type: "seek", positionSec: Math.max(0, position + delta) });
   }
 
   function toggleRepeat() {
@@ -208,7 +137,6 @@ export function Guest({ code, nickname, onExit }: Props) {
   const history = state?.history ?? [];
   const participants = state?.participants ?? [];
   const nowPlaying = state?.nowPlaying ?? null;
-  const ownsCurrent = !!nowPlaying && nowPlaying.addedBy === nickname;
   const progress = duration ? Math.min(1, position / duration) : 0;
   const remaining = duration ? formatClock(Math.max(0, duration - position)) : "--:--";
   const addedVideoIds = new Set([
@@ -227,52 +155,45 @@ export function Guest({ code, nickname, onExit }: Props) {
     <div className="flex min-h-screen flex-col">
       <RoomHeader code={code} remaining={remaining} />
 
-      {upNext && (
-        <div
-          key={upNext.id}
-          data-testid="upnext-callout"
-          className="up-next-pulse mx-6 mt-4 flex items-center gap-3 rounded-[4px] border-[3px] border-gold-500 bg-gold-500/10 p-3"
-          role="status"
-        >
-          <span className="font-press text-[9px] leading-relaxed text-gold-500 [text-shadow:0_0_8px_rgba(255,210,62,.7)]">
-            You're
-            <br />
-            up next!
-          </span>
-          <p className="min-w-0 text-sm font-semibold">
-            {upNext.title}
-            <span className="block text-xs font-medium text-arc-500">
-              added by {upNext.addedBy}
-            </span>
-          </p>
-        </div>
-      )}
-
       <main className="grid flex-1 grid-cols-1 items-stretch gap-5 p-6 lg:grid-cols-[300px_1fr_340px]">
-        <JoinPanel code={code} participants={participants} />
+        <JoinPanel code={code} participants={participants} collapsibleJoin />
 
-        <GuestPlayerPanel
-          nowPlaying={nowPlaying}
-          playing={playing}
-          muted={muted}
-          videoVisible={videoVisible}
-          ownsCurrent={ownsCurrent}
-          repeatOn={repeatOn}
-          remaining={remaining}
-          progress={progress}
-          containerRef={containerRef}
-          videoRef={videoRef}
-          onLoadedMetadata={handleLoadedMetadata}
-          onVideoError={handleVideoError}
-          onTogglePlay={() =>
-            emitAction({ type: playing ? "pause" : "play" })
-          }
-          onToggleRepeat={toggleRepeat}
-          onToggleMute={toggleMute}
-          onSeek={seekBy}
-          onShowVideo={showVideo}
-          onHideVideo={() => setVideoVisible(false)}
-        />
+        <div className="flex min-w-0 flex-col gap-4">
+          {upNext && (
+            <div
+              key={upNext.id}
+              data-testid="upnext-callout"
+              className="up-next-pulse flex items-center gap-3 rounded-[4px] border-[3px] border-gold-500 bg-gold-500/10 p-3"
+              role="status"
+            >
+              <span className="font-press text-[9px] leading-relaxed text-gold-500 [text-shadow:0_0_8px_rgba(255,210,62,.7)]">
+                You're
+                <br />
+                up next!
+              </span>
+              <p className="min-w-0 text-sm font-semibold">
+                {upNext.title}
+                <span className="block text-xs font-medium text-arc-500">
+                  added by {upNext.addedBy}
+                </span>
+              </p>
+            </div>
+          )}
+
+          <GuestPlayerPanel
+            nowPlaying={nowPlaying}
+            hasSongs={!!nowPlaying || queue.length > 0}
+            playing={playing}
+            repeatOn={repeatOn}
+            remaining={remaining}
+            progress={progress}
+            onTogglePlay={() =>
+              emitAction({ type: playing ? "pause" : "play" })
+            }
+            onToggleRepeat={toggleRepeat}
+            onSeek={seekBy}
+          />
+        </div>
 
         <GuestQueuePanel
           queue={queue}

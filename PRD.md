@@ -42,8 +42,8 @@ anyone who has ever pointed a remote at a videoke machine.
 | **Guest** | Phone | Scans QR, picks a nickname, searches and queues songs |
 
 One device can be both host screen and player (e.g., a laptop on the TV speaker).
-Guests' phones are synced mirrors + controllers: they show the same video (muted by
-default) and can control playback only for songs they added.
+Guests' phones are synced controllers: they show the current song (title, progress)
+and any guest can control playback — the video and its sound stay on the host device.
 
 ## 5. Features
 
@@ -60,6 +60,9 @@ default) and can control playback only for songs they added.
   plus the visible room code as text fallback.
 - Guest scans → lands in the room → enters a display nickname → in.
 - No permission needed from the host to *join*; adding songs is also open (host can remove).
+- The **host** screen keeps the join info (QR + code) front and center; the **guest**
+  view hides it by default (participants are always visible) so the room code doesn't
+  crowd the phone UI.
 
 ### 5.3 Song search & selection
 
@@ -67,7 +70,10 @@ default) and can control playback only for songs they added.
   1. **YouTube Data API v3 search** (server-side, API-key protected) — query
      `"{title} {artist} karaoke"` against curated karaoke channels; results show title,
      channel, duration, thumbnail.
-  2. **Paste a YouTube URL** — always-available fallback if search quota is exhausted.
+  2. **Innertube search fallback** (server-side via `youtubei.js`) — kicks in
+     automatically when the Data API quota is exhausted or unreachable, so typed
+     search never goes dark.
+  3. **Paste a YouTube URL** — always-available fallback if search quota is exhausted.
 - Search UX: one search box, filter chips (e.g., OPM, Pop, Rock, 2000s) are nice-to-have;
   results are karaoke-version videos (lyrics on screen baked into the video).
 - **Blank-state picks:** with an empty search box, the modal shows trending picks —
@@ -94,7 +100,7 @@ default) and can control playback only for songs they added.
 - Removing a queued item asks the host to confirm. Played songs can be queued again
   (button on each played row; shows "Added" instead when the song is already queued).
 - Guests see the queue live and a **"You're up next!"** notification when their song is
-  1 away.
+  1 away (it sits between the join panel and the player panel).
 
 ### 5.5 Playback (YouTube)
 
@@ -105,31 +111,21 @@ default) and can control playback only for songs they added.
     `duration`, `muted`.
   - The `ended` event → auto-advance to the next queue item (with repeat-one support).
   - Full video container control (no embed chrome) and clean fullscreen.
-- Video plays on the **host device**; audio goes to the room's speakers.
-- Guest phones mirror the video **in sync** with their own `<video>` element fed by the
-  same proxy, **muted by default**. Each guest can unmute their own device locally — per-guest audio only,
-  it never affects the room or other devices. The host broadcast is the source of
-  truth (guests re-seek when drift exceeds ~2s).
-- The guest video panel is **hidden by default** (no `<video>` is mounted — saves
-  mobile data, CPU, and battery). A "Show video" toggle mounts the synced player
-  on demand; the sync broadcasts continue either way (they're only a few bytes/s).
-- Player transport (host and guest panels share one layout), split left/right:
-  - **Large screens:** left group **repeat, -10, play/pause, +10, next**;
-    right group **sound, fullscreen**.
-  - **Small screens:** left group **repeat, play/pause, next**; right group
-    **more options** — a button that opens an inline popup (closes only when the
-    button is toggled again — not on blur) holding, in order, **-10, +10, sound,
-    fullscreen**.
-  - Fullscreen fills the screen with the video container; repeat is a repeat-one
-    toggle — turning it on also restarts the current song from the top; when on,
-    the host replays the song at its end instead of advancing.
-- Guest transport controls are gated by song ownership:
-  - Song **not** added by this guest → local mute toggle only (inside more options).
-  - Song **added by this guest** → full transport: play/pause, repeat, -10/+10 seek,
-    next. These actions are relayed through the host's player (the host stays the
-    source of truth); the server validates ownership (nickname vs
-    `nowPlaying.addedBy`) before relaying.
-  - Fullscreen is view-local and always available when a song is loaded.
+- Video plays on the **host device** only; audio goes to the room's speakers. Guest
+  phones show the synced playback state (title, progress, remaining time) only — no
+  video panel, thumbnail, badge, or sound.
+- Player transport (host and guest panels share one layout), two centered rows:
+  - **Main row:** **repeat, -10, play/pause, +10, next**.
+  - **Secondary row (below, centered):** **sound, fullscreen** (host only — guests
+    have no video, so no fullscreen).
+  - Fullscreen fills the screen with the video container on the host; repeat is a
+    repeat-one toggle — turning it on also restarts the current song from the top;
+    when on, the host replays the song at its end instead of advancing.
+- Guest transport is **not gated by ownership — any guest can use the full transport**
+  (play/pause, repeat, -10/+10 seek, next). These actions are relayed through the
+  host's player (the host stays the source of truth); the server only requires the
+  guest to be in the room. Guest controls are active whenever the room has any song
+  (playing or queued); with nothing playing, **Play starts the first queued song**.
 
 ### 5.6 Room lifecycle & edge cases
 
@@ -164,15 +160,14 @@ default) and can control playback only for songs they added.
 | Realtime | WebSockets (Socket.io or Supabase Realtime) | Room events: `queue_updated`, `player_state`, `participant_join/leave` |
 | Backend | Node (host-persisted room state) | Rooms held in memory/Redis; no DB required for MVP |
 | Song search | YouTube Data API v3 (server-side proxy) | Caches popular queries to conserve quota |
-| Player | Native HTML5 `<video>` + server stream proxy (`/api/stream/:videoId`) | Host view (authoritative) + guest view (synced, muted by default) |
+| Player | Native HTML5 `<video>` + server stream proxy (`/api/stream/:videoId`) | Host view (authoritative); guest view (synced state, no video, no audio) |
 | Auth | None | Room code = guest auth; host secret token = host auth |
 
 **Sync model:** the host device is the playback source of truth; it broadcasts
 `player_state` (playing/paused, position) that guest devices follow with a >2s drift
 re-seek. The server owns the queue; the host's control actions are just privileged queue
-mutations. Guests may control playback only while their own song is playing: their
-actions are validated server-side (nickname vs `nowPlaying.addedBy`) and relayed as
-`player:control` events that the host's player executes.
+mutations. Any guest may control playback (not restricted to their own songs):
+their actions are relayed as `player:control` events that the host's player executes.
 
 **Quota note:** free YouTube API quota ≈ 100 searches/day. Mitigations: result caching,
 curated pre-seeded "karaoke staples" list shipped with the app, URL-paste fallback.
@@ -193,7 +188,7 @@ curated pre-seeded "karaoke staples" list shipped with the app, URL-paste fallba
 | Search quota exhaustion | Caching, seeded catalog, paste-URL fallback |
 | Karaoke search returns non-karaoke videos | Prefer curated karaoke channels in search filter; host previews before play |
 | Host disconnect mid-party | Grace period + reconnect via localStorage host token |
-| Stream proxy bandwidth (host + opt-in guests) | Guest video is opt-in (data-saver default); quality capped at muxed progressive formats; can be lowered to 360p with a one-line change if needed |
+| Stream proxy bandwidth (host only) | Guest view has no stream request; quality capped at muxed progressive formats; can be lowered to 360p with a one-line change if needed |
 
 ## 10. Future / backlog candidates
 

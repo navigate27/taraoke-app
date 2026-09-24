@@ -75,14 +75,17 @@ Idle rooms auto-expire (see PRD §5.6). No database in v1.
 
 - **Search is proxied server-side** so the API key never reaches the browser, with
   response caching to conserve the ~100 free searches/day quota, plus the paste-URL
-  fallback (PRD §5.3).
+  fallback (PRD §5.3). When the Data API is exhausted (429) or unreachable, the proxy
+  falls back to `youtubei.js` search (InnerTube, no Data API quota) so typed search
+  keeps working.
 - **Playback** (owner-approved pivot, 2026-09 — replaces the former official-embed-only
   stance): the server resolves YouTube stream URLs with `youtubei.js`, caches them
   in memory with a TTL, and proxies the bytes at `GET /api/stream/:videoId` with
-  HTTP Range support (403/expiry triggers a single-flight re-resolve). Host and guest
-  render a plain `<video src="/api/stream/:videoId">` — programmatic control via the
-  standard media API, `ended` → auto-advance. The host device stays the playback
-  source of truth.
+  HTTP Range support (403/expiry triggers a single-flight re-resolve). Only the host
+  renders a plain `<video src="/api/stream/:videoId">` — programmatic control via the
+  standard media API, `ended` → auto-advance. Guest devices render the synced
+  playback state only — no video element, no stream request, no audio; the host
+  device is the room's speaker. The host stays the playback source of truth.
 - **Accepted trade-off:** raw stream extraction tracks YouTube's player internals
   (ToS-gray; `youtubei.js` keeps up); risk register lives in PRD §9. A future service
   worker must bypass `/api/stream`.

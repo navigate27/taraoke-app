@@ -1,4 +1,5 @@
 import { normalizeTitle } from "../shared/songTitle";
+import { getInnertube } from "./stream";
 
 export interface SearchResult {
   videoId: string;
@@ -37,7 +38,7 @@ export async function searchYouTube(
 ): Promise<{
   results: SearchResult[];
   nextPageToken: string | null;
-  source: "api" | "cache" | "unavailable";
+  source: "api" | "cache" | "innertube" | "unavailable";
 }> {
   const key = process.env.YOUTUBE_API_KEY;
   const cacheKey = pageToken ? `${query}#${pageToken}` : query;
@@ -49,46 +50,95 @@ export async function searchYouTube(
       source: "cache",
     };
   }
-  if (!key) {
-    return { results: [], nextPageToken: null, source: "unavailable" };
+  if (key) {
+    const url = new URL("https://www.googleapis.com/youtube/v3/search");
+    url.searchParams.set("part", "snippet");
+    url.searchParams.set("type", "video");
+    url.searchParams.set("videoEmbeddable", "true");
+    url.searchParams.set("maxResults", "12");
+    url.searchParams.set("q", `${query} karaoke`);
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+    url.searchParams.set("key", key);
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const body = (await res.json()) as {
+          items?: YouTubeSearchItem[];
+          nextPageToken?: string;
+        };
+        const results: SearchResult[] = (body.items ?? [])
+          .filter((item) => item.id?.videoId)
+          .map((item) => ({
+            videoId: item.id!.videoId!,
+            title: item.snippet?.title ?? "Untitled",
+            channel: item.snippet?.channelTitle ?? "YouTube",
+            thumbnail: item.snippet?.thumbnails?.medium?.url ?? "",
+            durationSec: null,
+          }));
+        const nextPageToken = body.nextPageToken ?? null;
+        cache.set(cacheKey, {
+          expires: Date.now() + CACHE_TTL_MS,
+          results,
+          nextPageToken,
+        });
+        return {
+          results,
+          nextPageToken,
+          source: "api",
+        };
+      }
+    } catch {
+      // Data API unreachable — fall through to the Innertube search.
+    }
   }
-  const url = new URL("https://www.googleapis.com/youtube/v3/search");
-  url.searchParams.set("part", "snippet");
-  url.searchParams.set("type", "video");
-  url.searchParams.set("videoEmbeddable", "true");
-  url.searchParams.set("maxResults", "12");
-  url.searchParams.set("q", `${query} karaoke`);
-  if (pageToken) url.searchParams.set("pageToken", pageToken);
-  url.searchParams.set("key", key);
+  return searchYouTubeViaInnertube(query, pageToken, cacheKey);
+}
+
+interface InnertubeVideoLike {
+  id?: string;
+  title?: { text?: string };
+  author?: { name?: string };
+  best_thumbnail?: { url?: string } | null;
+  duration?: number;
+}
+
+async function searchYouTubeViaInnertube(
+  query: string,
+  pageToken: string | undefined,
+  cacheKey: string,
+): Promise<{
+  results: SearchResult[];
+  nextPageToken: string | null;
+  source: "innertube" | "unavailable";
+}> {
   try {
-    const res = await fetch(url);
-    if (!res.ok) {
+    const yt = await getInnertube();
+    const info = (await yt.search(`${query} karaoke`, {
+      type: "video",
+    })) as unknown as { videos?: InnertubeVideoLike[] };
+    const results: SearchResult[] = (info.videos ?? [])
+      .filter((v) => v.id)
+      .map((v) => ({
+        videoId: v.id!,
+        title: v.title?.text ?? "Untitled",
+        channel: v.author?.name ?? "YouTube",
+        thumbnail:
+          v.best_thumbnail?.url ??
+          `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`,
+        durationSec:
+          typeof v.duration === "number" && Number.isFinite(v.duration)
+            ? v.duration
+            : null,
+      }));
+    if (results.length === 0) {
       return { results: [], nextPageToken: null, source: "unavailable" };
     }
-    const body = (await res.json()) as {
-      items?: YouTubeSearchItem[];
-      nextPageToken?: string;
-    };
-    const results: SearchResult[] = (body.items ?? [])
-      .filter((item) => item.id?.videoId)
-      .map((item) => ({
-        videoId: item.id!.videoId!,
-        title: item.snippet?.title ?? "Untitled",
-        channel: item.snippet?.channelTitle ?? "YouTube",
-        thumbnail: item.snippet?.thumbnails?.medium?.url ?? "",
-        durationSec: null,
-      }));
-    const nextPageToken = body.nextPageToken ?? null;
     cache.set(cacheKey, {
       expires: Date.now() + CACHE_TTL_MS,
       results,
-      nextPageToken,
+      nextPageToken: null,
     });
-    return {
-      results,
-      nextPageToken,
-      source: "api",
-    };
+    return { results, nextPageToken: null, source: "innertube" };
   } catch {
     return { results: [], nextPageToken: null, source: "unavailable" };
   }

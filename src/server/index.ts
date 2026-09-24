@@ -76,7 +76,7 @@ app.get("/api/lan", async () => {
   return { ip: null };
 });
 
-app.get<{ Params: { videoId: string } }>(
+app.get<{ Params: { videoId: string }; Querystring: { audio?: string } }>(
   "/api/stream/:videoId",
   streamHandler,
 );
@@ -357,7 +357,7 @@ io.on("connection", (socket) => {
     const nickname = socket.data.nickname;
     if (!code || !nickname) return;
     const room = getRoom(code);
-    if (!room || room.nowPlaying?.addedBy !== nickname) return;
+    if (!room) return;
     touchRoom(room);
     io.to(code).emit("playerControl", action, nickname);
   });

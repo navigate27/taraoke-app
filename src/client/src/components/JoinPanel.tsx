@@ -7,11 +7,13 @@ import { ParticipantChips } from "./ParticipantChips";
 interface Props {
   code: string;
   participants: PublicRoomState["participants"];
+  collapsibleJoin?: boolean;
   children?: ReactNode;
 }
 
-export function JoinPanel({ code, participants, children }: Props) {
+export function JoinPanel({ code, participants, collapsibleJoin = false, children }: Props) {
   const [qrUrl, setQrUrl] = useState("");
+  const [joinOpen, setJoinOpen] = useState(!collapsibleJoin);
 
   useEffect(() => {
     buildJoinUrl(code)
@@ -27,40 +29,55 @@ export function JoinPanel({ code, participants, children }: Props) {
 
   return (
     <section className="panel flex flex-col p-5" aria-label="Join the room" data-testid="join-panel">
-      <h2
-        data-testid="join-heading"
-        className="mb-4 font-press text-[13px] text-gold-500 [text-shadow:2px_2px_0_#5C4A0E]"
-      >
-        Join the room
-      </h2>
-      {qrUrl ? (
-        <div
-          data-testid="join-qr"
-          className="crt flex justify-center rounded-[4px] border-[3px] border-cab-700 p-4"
+      {collapsibleJoin ? (
+        <button
+          data-testid="join-toggle"
+          onClick={() => setJoinOpen((open) => !open)}
+          aria-expanded={joinOpen}
+          className="mb-4 self-start font-press text-[13px] text-gold-500 [text-shadow:2px_2px_0_#5C4A0E]"
         >
-          <img src={qrUrl} alt={`Room code ${code}`} width={150} height={150} />
-        </div>
+          Join the room {joinOpen ? "▴" : "▾"}
+        </button>
       ) : (
-        <div
-          data-testid="join-qr"
-          className="crt h-[182px] rounded-[4px] border-[3px] border-cab-700"
-        />
+        <h2
+          data-testid="join-heading"
+          className="mb-4 font-press text-[13px] text-gold-500 [text-shadow:2px_2px_0_#5C4A0E]"
+        >
+          Join the room
+        </h2>
       )}
-      <p
-        data-testid="join-code"
-        className="mt-4 text-center font-press text-[22px] text-cyan-500 [text-shadow:0_0_8px_rgba(62,240,255,.7)]"
-      >
-        {code}
-      </p>
-      <p data-testid="join-hint" className="mt-2 text-center text-sm text-arc-500">
-        Scan the QR or type the room code
-      </p>
-      <p
-        data-testid="join-blink"
-        className="coin-blink mt-3 text-center font-press text-[9px] text-gold-500"
-      >
-        Insert coin to join
-      </p>
+      {joinOpen && (
+        <>
+          {qrUrl ? (
+            <div
+              data-testid="join-qr"
+              className="crt flex justify-center rounded-[4px] border-[3px] border-cab-700 p-4"
+            >
+              <img src={qrUrl} alt={`Room code ${code}`} width={150} height={150} />
+            </div>
+          ) : (
+            <div
+              data-testid="join-qr"
+              className="crt h-[182px] rounded-[4px] border-[3px] border-cab-700"
+            />
+          )}
+          <p
+            data-testid="join-code"
+            className="mt-4 text-center font-press text-[22px] text-cyan-500 [text-shadow:0_0_8px_rgba(62,240,255,.7)]"
+          >
+            {code}
+          </p>
+          <p data-testid="join-hint" className="mt-2 text-center text-sm text-arc-500">
+            Scan the QR or type the room code
+          </p>
+          <p
+            data-testid="join-blink"
+            className="coin-blink mt-3 text-center font-press text-[9px] text-gold-500"
+          >
+            Insert coin to join
+          </p>
+        </>
+      )}
       <ParticipantChips participants={participants} />
       {children}
     </section>
