@@ -21,6 +21,7 @@ interface Props {
   history: QueueItem[];
   nowPlaying: QueueItem | null;
   addedVideoIds: Set<string>;
+  addedTitles: Set<string>;
   onPlayItem: (item: QueueItem) => void;
   onAddSong: () => void;
   onReadd: (item: QueueItem) => void;
@@ -33,6 +34,7 @@ export function HostQueuePanel({
   history,
   nowPlaying,
   addedVideoIds,
+  addedTitles,
   onPlayItem,
   onAddSong,
   onReadd,
@@ -372,8 +374,11 @@ export function HostQueuePanel({
           </>
         )}
         <SongSuggestions
-          seed={nowPlaying?.title ?? queue[0]?.title ?? history[0]?.title ?? null}
+          seedCandidates={[nowPlaying, ...queue, ...history]
+            .filter((i): i is QueueItem => !!i)
+            .map((i) => ({ title: i.title, channel: i.channel }))}
           addedVideoIds={addedVideoIds}
+          addedTitles={addedTitles}
           onAdd={onSuggestionAdd}
         />
       </div>

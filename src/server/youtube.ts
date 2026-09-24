@@ -1,3 +1,5 @@
+import { normalizeTitle } from "../shared/songTitle";
+
 export interface SearchResult {
   videoId: string;
   title: string;
@@ -9,6 +11,7 @@ export interface SearchResult {
 interface CacheEntry {
   expires: number;
   results: SearchResult[];
+  nextPageToken: string | null;
 }
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -23,16 +26,31 @@ interface YouTubeSearchItem {
   };
 }
 
+interface YouTubeVideoItem {
+  id?: string;
+  snippet?: YouTubeSearchItem["snippet"];
+}
+
 export async function searchYouTube(
   query: string,
-): Promise<{ results: SearchResult[]; source: "api" | "cache" | "unavailable" }> {
+  pageToken?: string,
+): Promise<{
+  results: SearchResult[];
+  nextPageToken: string | null;
+  source: "api" | "cache" | "unavailable";
+}> {
   const key = process.env.YOUTUBE_API_KEY;
-  const cached = cache.get(query);
+  const cacheKey = pageToken ? `${query}#${pageToken}` : query;
+  const cached = cache.get(cacheKey);
   if (cached && cached.expires > Date.now()) {
-    return { results: cached.results, source: "cache" };
+    return {
+      results: cached.results,
+      nextPageToken: cached.nextPageToken,
+      source: "cache",
+    };
   }
   if (!key) {
-    return { results: [], source: "unavailable" };
+    return { results: [], nextPageToken: null, source: "unavailable" };
   }
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.searchParams.set("part", "snippet");
@@ -40,11 +58,17 @@ export async function searchYouTube(
   url.searchParams.set("videoEmbeddable", "true");
   url.searchParams.set("maxResults", "12");
   url.searchParams.set("q", `${query} karaoke`);
+  if (pageToken) url.searchParams.set("pageToken", pageToken);
   url.searchParams.set("key", key);
   try {
     const res = await fetch(url);
-    if (!res.ok) return { results: [], source: "unavailable" };
-    const body = (await res.json()) as { items?: YouTubeSearchItem[] };
+    if (!res.ok) {
+      return { results: [], nextPageToken: null, source: "unavailable" };
+    }
+    const body = (await res.json()) as {
+      items?: YouTubeSearchItem[];
+      nextPageToken?: string;
+    };
     const results: SearchResult[] = (body.items ?? [])
       .filter((item) => item.id?.videoId)
       .map((item) => ({
@@ -54,10 +78,103 @@ export async function searchYouTube(
         thumbnail: item.snippet?.thumbnails?.medium?.url ?? "",
         durationSec: null,
       }));
-    cache.set(query, { expires: Date.now() + CACHE_TTL_MS, results });
-    return { results, source: "api" };
+    const nextPageToken = body.nextPageToken ?? null;
+    cache.set(cacheKey, {
+      expires: Date.now() + CACHE_TTL_MS,
+      results,
+      nextPageToken,
+    });
+    return {
+      results,
+      nextPageToken,
+      source: "api",
+    };
   } catch {
-    return { results: [], source: "unavailable" };
+    return { results: [], nextPageToken: null, source: "unavailable" };
+  }
+}
+
+const KARAOKE_RE =
+  /\b(karaoke|videoke|instrumental|minus\s?one|min-one|backing\s?track|playback)\b/i;
+
+const NON_SONG_RE =
+  /\b(mashup|medley|megamix|non-?stop|compilation|mixtape)\b/i;
+
+export function pickKaraokeResult(
+  results: SearchResult[],
+): SearchResult | null {
+  return (
+    results.find(
+      (r) => KARAOKE_RE.test(r.title) && !NON_SONG_RE.test(r.title),
+    ) ?? null
+  );
+}
+
+export function dedupeByTitle(results: SearchResult[]): SearchResult[] {
+  const seenIds = new Set<string>();
+  const seenTitles = new Set<string>();
+  const out: SearchResult[] = [];
+  for (const r of results) {
+    if (seenIds.has(r.videoId)) continue;
+    const n = normalizeTitle(r.title);
+    if (n && seenTitles.has(n)) continue;
+    seenIds.add(r.videoId);
+    if (n) seenTitles.add(n);
+    out.push(r);
+  }
+  return out;
+}
+
+export function karaokeOnly(results: SearchResult[]): SearchResult[] {
+  return dedupeByTitle(
+    results.filter((r) => KARAOKE_RE.test(r.title) && !NON_SONG_RE.test(r.title)),
+  );
+}
+
+export async function getTrendingVideos(
+  regionCode = "PH",
+  pageToken?: string,
+): Promise<{ results: SearchResult[]; nextPageToken: string | null }> {
+  const key = process.env.YOUTUBE_API_KEY;
+  if (!key) return { results: [], nextPageToken: null };
+  const cacheKey = `#trending:${regionCode}${pageToken ? `#${pageToken}` : ""}`;
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) {
+    return { results: cached.results, nextPageToken: cached.nextPageToken };
+  }
+  const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+  url.searchParams.set("part", "snippet");
+  url.searchParams.set("chart", "mostPopular");
+  url.searchParams.set("regionCode", regionCode);
+  url.searchParams.set("videoCategoryId", "10");
+  url.searchParams.set("maxResults", "12");
+  if (pageToken) url.searchParams.set("pageToken", pageToken);
+  url.searchParams.set("key", key);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return { results: [], nextPageToken: null };
+    const body = (await res.json()) as {
+      items?: YouTubeVideoItem[];
+      nextPageToken?: string;
+    };
+    const results: SearchResult[] = (body.items ?? [])
+      .filter((item) => item.id)
+      .map((item) => ({
+        videoId: item.id!,
+        title: item.snippet?.title ?? "Untitled",
+        channel: item.snippet?.channelTitle ?? "YouTube",
+        thumbnail: item.snippet?.thumbnails?.medium?.url ?? "",
+        durationSec: null,
+      }));
+    const nextPageToken = body.nextPageToken ?? null;
+    cache.set(cacheKey, {
+      expires: Date.now() + CACHE_TTL_MS,
+      results,
+      nextPageToken,
+    });
+    return { results, nextPageToken };
+  } catch {
+    return { results: [], nextPageToken: null };
   }
 }
 

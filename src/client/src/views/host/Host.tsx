@@ -10,6 +10,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { JoinPanel } from "../../components/JoinPanel";
 import { RoomHeader } from "../../components/RoomHeader";
 import { SongsSearchModal } from "../../components/SongsSearchModal";
+import { normalizeTitle } from "../../../../shared/songTitle";
 import { socket } from "../../lib/socket";
 import {
   formatClock,
@@ -295,6 +296,12 @@ export function Host({ code, token, nickname, onExit }: Props) {
     ...(nowPlaying ? [nowPlaying.videoId] : []),
     ...queue.map((q) => q.videoId),
   ]);
+  const addedTitles = new Set(
+    [nowPlaying?.title, ...queue.map((q) => q.title)]
+      .filter((t): t is string => !!t)
+      .map(normalizeTitle)
+      .filter((t) => t.length > 0),
+  );
 
   function playQueueItem(item: QueueItem) {
     if (nowPlaying) setPlayNowItem(item);
@@ -339,6 +346,7 @@ export function Host({ code, token, nickname, onExit }: Props) {
           history={history}
           nowPlaying={nowPlaying}
           addedVideoIds={addedVideoIds}
+          addedTitles={addedTitles}
           onPlayItem={playQueueItem}
           onAddSong={() => setSearchOpen(true)}
           onReadd={addToQueue}

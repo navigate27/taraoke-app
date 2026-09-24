@@ -8,6 +8,7 @@ import type { SearchResult } from "../../../../server/youtube";
 import { JoinPanel } from "../../components/JoinPanel";
 import { RoomHeader } from "../../components/RoomHeader";
 import { SongsSearchModal } from "../../components/SongsSearchModal";
+import { normalizeTitle } from "../../../../shared/songTitle";
 import { socket } from "../../lib/socket";
 import { formatClock, loadYouTubeApi, YTEvents, type YTPlayer } from "../../lib/youtube";
 import { GuestPlayerPanel } from "./GuestPlayerPanel";
@@ -246,6 +247,12 @@ export function Guest({ code, nickname, onExit }: Props) {
     ...(nowPlaying ? [nowPlaying.videoId] : []),
     ...queue.map((q) => q.videoId),
   ]);
+  const addedTitles = new Set(
+    [nowPlaying?.title, ...queue.map((q) => q.title)]
+      .filter((t): t is string => !!t)
+      .map(normalizeTitle)
+      .filter((t) => t.length > 0),
+  );
   const upNext = queue[0]?.addedBy === nickname ? queue[0] : null;
 
   return (
@@ -301,6 +308,7 @@ export function Guest({ code, nickname, onExit }: Props) {
           history={history}
           nowPlaying={nowPlaying}
           addedVideoIds={addedVideoIds}
+          addedTitles={addedTitles}
           nickname={nickname}
           onAddSong={() => setSearchOpen(true)}
           onReadd={addToQueue}

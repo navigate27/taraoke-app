@@ -33,7 +33,19 @@ import {
   sweepRooms,
   touchRoom,
 } from "./rooms";
-import { resolveYouTubeUrl, searchYouTube } from "./youtube";
+import {
+  SIMILAR_PAGE,
+  cleanArtist,
+  getSimilarTracks,
+  resolveKaraokeVersions,
+  resolveSimilarTracks,
+} from "./lastfm";
+import {
+  getTrendingVideos,
+  karaokeOnly,
+  resolveYouTubeUrl,
+  searchYouTube,
+} from "./youtube";
 
 const PORT = Number(process.env.SERVER_PORT ?? 3001);
 const HOST = process.env.SERVER_HOST ?? "0.0.0.0";
@@ -78,16 +90,71 @@ app.get<{ Querystring: { url?: string } }>(
   },
 );
 
-app.get<{ Querystring: { seed?: string } }>(
-  "/api/suggestions",
-  async (req, reply) => {
-    const seed = (req.query.seed ?? "").trim().slice(0, 120);
-    const { results } = await searchYouTube(
-      seed || "OPM videoke classics",
+app.get<{
+  Querystring: { seed?: string; artist?: string; page?: string };
+}>("/api/suggestions", async (req, reply) => {
+  const seed = (req.query.seed ?? "").trim().slice(0, 120);
+  const artist = cleanArtist((req.query.artist ?? "").trim().slice(0, 120));
+  const page = (req.query.page ?? "").trim();
+
+  if (page.startsWith("s:") && artist && seed) {
+    const idx = Number(page.slice(2)) || 0;
+    const similar = await getSimilarTracks(artist, seed);
+    const slice = similar.slice(idx, idx + SIMILAR_PAGE);
+    const results = await resolveSimilarTracks(slice);
+    return reply.send({
+      results,
+      nextPageToken:
+        idx + SIMILAR_PAGE < similar.length ? `s:${idx + SIMILAR_PAGE}` : null,
+      mode: "similar",
+    });
+  }
+
+  if (artist && seed) {
+    const similar = await getSimilarTracks(artist, seed);
+    if (similar.length > 0) {
+      const results = await resolveSimilarTracks(
+        similar.slice(0, SIMILAR_PAGE),
+      );
+      return reply.send({
+        results,
+        nextPageToken:
+          similar.length > SIMILAR_PAGE ? `s:${SIMILAR_PAGE}` : null,
+        mode: "similar",
+      });
+    }
+  }
+
+  if (!seed) {
+    const trending = await getTrendingVideos(
+      "PH",
+      page.startsWith("y:") ? page.slice(2) : undefined,
     );
-    reply.send({ results: results.slice(0, 6) });
-  },
-);
+    if (trending.results.length > 0) {
+      const results = await resolveKaraokeVersions(
+        trending.results.slice(0, 6),
+      );
+      return reply.send({
+        results,
+        nextPageToken: trending.nextPageToken
+          ? `y:${trending.nextPageToken}`
+          : null,
+        mode: "trending",
+      });
+    }
+  }
+
+  const { results, nextPageToken } = await searchYouTube(
+    seed || "OPM videoke classics",
+    page.startsWith("y:") ? page.slice(2) : undefined,
+  );
+  const filtered = karaokeOnly(results);
+  reply.send({
+    results: filtered,
+    nextPageToken: nextPageToken ? `y:${nextPageToken}` : null,
+    mode: "title",
+  });
+});
 
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(app.server, {
   cors: { origin: true },
