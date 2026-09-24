@@ -393,10 +393,18 @@ export function Host({ code, token, onExit }: Props) {
             )}
             <div
               ref={containerRef}
-              className="absolute inset-0 flex items-center justify-center"
+              className="absolute inset-0 flex items-center justify-center [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0"
             />
+            {nowPlaying && (
+              <button
+                type="button"
+                onClick={togglePlay}
+                aria-label={playing ? "Pause video" : "Play video"}
+                className="absolute inset-0 z-[5] cursor-pointer"
+              />
+            )}
             {nowPlaying && !playing && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center [&>button]:pointer-events-auto">
                 <button
                   onClick={togglePlay}
                   aria-label="Play"
