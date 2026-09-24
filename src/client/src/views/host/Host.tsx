@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type {
   GuestAction,
+  PlayerState,
   PublicRoomState,
   QueueItem,
 } from "../../../../shared/types";
@@ -57,32 +58,61 @@ export function Host({ code, token, nickname, onExit }: Props) {
   const [playNowItem, setPlayNowItem] = useState<QueueItem | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [muted, setMuted] = useState(true);
-  const [joinToast, setJoinToast] = useState<string | null>(null);
-  const joinToastTimer = useRef<number | undefined>(undefined);
+  const [repeatOn, setRepeatOn] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | undefined>(undefined);
   const mutedRef = useRef(true);
   const playerRef = useRef<YTPlayer | null>(null);
   const playingRef = useRef(false);
   const readyRef = useRef(false);
   const pendingVideoRef = useRef<string | null>(null);
+  const resumeRef = useRef<{ positionSec: number; playing: boolean } | null>(null);
+  const repeatRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const stateRef = useRef<PublicRoomState | null>(null);
   const videoId = state?.nowPlaying?.videoId ?? null;
 
   stateRef.current = state;
 
+  function showToast(message: string) {
+    setToast(message);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 3000);
+  }
+
   useEffect(() => {
     socket.emit("room:join", code, nickname, token, (res) => {
       if (!res.ok) onExit();
     });
+    const pingTimer = window.setInterval(() => socket.emit("room:ping"), 25000);
     const onRoomState = (s: PublicRoomState) => setState(s);
     const onParticipantJoined = (nickname: string) => {
-      setJoinToast(`${nickname} joined the room`);
-      window.clearTimeout(joinToastTimer.current);
-      joinToastTimer.current = window.setTimeout(() => setJoinToast(null), 3000);
+      showToast(`${nickname} joined the room`);
+    };
+    const onParticipantLeft = (left: string) => {
+      if (left === nickname) return;
+      showToast(`${left} left the room`);
+    };
+    const onPlayerState = (p: PlayerState) => {
+      resumeRef.current = { positionSec: p.positionSec, playing: p.playing };
+      repeatRef.current = p.repeatOn;
+      setRepeatOn(p.repeatOn);
     };
     const onPlayerControl = (action: GuestAction) => {
       if (action.type === "next") {
         socket.emit("host:action", token, { type: "next" });
+        return;
+      }
+      if (action.type === "repeat") {
+        repeatRef.current = action.on;
+        setRepeatOn(action.on);
+        if (action.on) {
+          const player = playerRef.current;
+          if (player && readyRef.current) {
+            player.seekTo(0, true);
+            player.playVideo();
+          }
+        }
         return;
       }
       const player = playerRef.current;
@@ -95,11 +125,17 @@ export function Host({ code, token, nickname, onExit }: Props) {
     };
     socket.on("roomState", onRoomState);
     socket.on("participantJoined", onParticipantJoined);
+    socket.on("participantLeft", onParticipantLeft);
+    socket.on("playerState", onPlayerState);
     socket.on("playerControl", onPlayerControl);
     return () => {
       socket.off("roomState", onRoomState);
       socket.off("participantJoined", onParticipantJoined);
+      socket.off("participantLeft", onParticipantLeft);
+      socket.off("playerState", onPlayerState);
       socket.off("playerControl", onPlayerControl);
+      window.clearInterval(pingTimer);
+      window.clearTimeout(toastTimer.current);
     };
   }, [code, token, nickname, onExit]);
 
@@ -136,7 +172,12 @@ export function Host({ code, token, nickname, onExit }: Props) {
             playingRef.current = isPlaying;
             setPlaying(isPlaying);
             if (e.data === YTEvents.ENDED) {
-              socket.emit("host:action", token, { type: "next" });
+              if (repeatRef.current) {
+                player?.seekTo(0, true);
+                player?.playVideo();
+              } else {
+                socket.emit("host:action", token, { type: "next" });
+              }
             }
           },
         },
@@ -172,11 +213,20 @@ export function Host({ code, token, nickname, onExit }: Props) {
       const duration = player.getDuration() || 0;
       setRemaining(formatClock(duration - position));
       setProgress(duration ? Math.min(1, position / duration) : 0);
+      if (resumeRef.current) {
+        if (!playingRef.current) return;
+        const resume = resumeRef.current;
+        resumeRef.current = null;
+        if (resume.positionSec > 0) player.seekTo(resume.positionSec, true);
+        if (!resume.playing) player.pauseVideo();
+        return;
+      }
       socket.emit("player:state", token, {
         videoId: state?.nowPlaying?.videoId ?? null,
         playing: playingRef.current,
         positionSec: position,
         durationSec: duration,
+        repeatOn: repeatRef.current,
       });
     }, 1000);
     return () => clearInterval(timer);
@@ -187,6 +237,19 @@ export function Host({ code, token, nickname, onExit }: Props) {
     if (!player) return;
     if (playingRef.current) player.pauseVideo();
     else player.playVideo();
+  }
+
+  function toggleRepeat() {
+    const next = !repeatRef.current;
+    repeatRef.current = next;
+    setRepeatOn(next);
+    if (next) {
+      const player = playerRef.current;
+      if (player && readyRef.current) {
+        player.seekTo(0, true);
+        player.playVideo();
+      }
+    }
   }
 
   function seekBy(delta: number) {
@@ -260,8 +323,10 @@ export function Host({ code, token, nickname, onExit }: Props) {
           remaining={remaining}
           progress={progress}
           muted={muted}
+          repeatOn={repeatOn}
           containerRef={containerRef}
           onTogglePlay={togglePlay}
+          onToggleRepeat={toggleRepeat}
           onSeek={seekBy}
           onToggleMute={toggleMute}
           onNext={() => socket.emit("host:action", token, { type: "next" })}
@@ -287,12 +352,12 @@ export function Host({ code, token, nickname, onExit }: Props) {
         />
       )}
 
-      {joinToast && (
+      {toast && (
         <div
           className="crt fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-[4px] border-[3px] border-cyan-500 px-5 py-3 text-sm font-semibold text-cyan-500 [box-shadow:0_0_14px_rgba(62,240,255,.4)]"
           role="status"
         >
-          {joinToast}
+          {toast}
         </div>
       )}
 

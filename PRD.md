@@ -100,19 +100,34 @@ default) and can control playback only for songs they added.
 - The guest video panel is **hidden by default** (no iframe is mounted — saves
   mobile data, CPU, and battery). A "Show video" toggle mounts the synced player
   on demand; the sync broadcasts continue either way (they're only a few bytes/s).
+- Player transport (host and guest panels share one layout): **repeat, play/pause,
+  fullscreen**, plus **more options** on small screens only — the more-options button
+  opens an inline popup (closes only when the button is toggled again — not on blur)
+  holding **-10, +10, mute, next**. On large screens those four actions appear
+  directly in the transport row instead. Fullscreen fills the screen with the video
+  container; repeat is a repeat-one toggle — turning it on also restarts the current
+  song from the top; when on, the host replays the song at its end instead of
+  advancing.
 - Guest transport controls are gated by song ownership:
-  - Song **not** added by this guest → local mute toggle only.
-  - Song **added by this guest** → full transport: play/pause, -10/+10 seek, skip.
-    These actions are relayed through the host's player (the host stays the source of
-    truth); the server validates ownership (nickname vs `nowPlaying.addedBy`) before
-    relaying.
+  - Song **not** added by this guest → local mute toggle only (inside more options).
+  - Song **added by this guest** → full transport: play/pause, repeat, -10/+10 seek,
+    next. These actions are relayed through the host's player (the host stays the
+    source of truth); the server validates ownership (nickname vs
+    `nowPlaying.addedBy`) before relaying.
+  - Fullscreen is view-local and always available when a song is loaded.
 - Known tradeoff: **YouTube ads may play between songs** on non-Premium accounts.
   Acceptable for MVP; documented as a known limitation.
 
 ### 5.6 Room lifecycle & edge cases
 
 - Host leaving/closing tab → room enters grace period (e.g., 5 min), then auto-expires.
-- Guests who leave are removed from the participant list after timeout.
+- Host resumes: when the host returns to the room, playback resumes from the last
+  synced position and playing state (the server caches the latest `player_state`).
+- While the host is away, guests see the current song **paused** at the last synced
+  position — the server broadcasts a paused state when the host disconnects.
+- Guests who leave are removed from the participant list after a heartbeat timeout;
+  remaining participants see a "left the room" toast (and a "joined" toast on entry).
+  Participants stay alive via a periodic heartbeat ping.
 - Duplicate song in queue: allowed, but host may remove.
 - Room codes: collision-safe, profanity-filtered, retry on collision.
 - Empty queue → "Add a song!" empty state with one-tap suggestions (e.g., top OPM

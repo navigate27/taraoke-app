@@ -205,10 +205,17 @@ Core vocabulary (used everywhere, never paraphrased):
 
 - Icons: **Pixelarticons** (`pixelarticons/react`, MIT) — 1-bit pixel icons on a 24px
   grid, the native companion to Press Start 2P. Used for all functional UI: close ✕
-  (Close), search, volume (Volume2/VolumeX), eye (Eye/EyeOff), host star (Star),
+  (Close), search, volume off (VolumeX), eye (Eye/EyeOff), host star (Star),
   played check (Check), play (Play), now-playing note (Music), reorder
-  (ArrowUp/ArrowDown). Sized 16–20px via CSS classes; glows on SVG icons use
-  `drop-shadow` filter.
+  (ArrowUp/ArrowDown), repeat (Repeat1), more options (MoreHorizontal). Sized 16–20px
+  via CSS classes; glows on SVG icons use `drop-shadow` filter. Active toggles
+  (repeat on, more-options open, sound on) light up in cyan with a text glow instead
+  of a filled background.
+- Two transport icons are **custom 1-bit inline SVGs** in the same 24px/pixel style,
+  because the pack's glyphs don't read correctly there: **fullscreen** (four corner
+  brackets — the pack's `expand` looks like a plus) and **sound on** (speaker +
+  wave bars drawn to the same bounding box as `volume-x`, so the mute/unmute toggle
+  doesn't shift optically).
 - Transport keeps **unicode glyphs** (▶ ❚❚ ⏭) — pixel-font-native and the
   arcade-authentic look; don't replace them with an icon pack. The `★ Taraoke ★`
   marquee is brand decoration, also kept as text.

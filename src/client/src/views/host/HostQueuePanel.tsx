@@ -168,7 +168,7 @@ export function HostQueuePanel({
               />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{nowPlaying.title}</p>
-                <ParticipantChip nickname={nowPlaying.addedBy} />
+                <ParticipantChip nickname={nowPlaying.addedBy} size="sm" />
               </div>
             </div>
           </>
@@ -220,7 +220,7 @@ export function HostQueuePanel({
               />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{item.title}</p>
-                <ParticipantChip nickname={item.addedBy} />
+                <ParticipantChip nickname={item.addedBy} size="sm" />
               </div>
             </div>
             <div className="mt-2.5 flex justify-end gap-2">
@@ -288,7 +288,7 @@ export function HostQueuePanel({
                 />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{item.title}</p>
-                  <ParticipantChip nickname={item.addedBy} />
+                  <ParticipantChip nickname={item.addedBy} size="sm" />
                 </div>
                 {addedVideoIds.has(item.videoId) ? (
                   <Check

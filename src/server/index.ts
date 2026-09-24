@@ -120,6 +120,7 @@ io.on("connection", (socket) => {
     if (hostToken && hostToken === room.hostToken) {
       room.hostSocketId = socket.id;
     }
+    const isHost = !!hostToken && hostToken === room.hostToken;
     room.participants.set(socket.id, {
       socketId: socket.id,
       nickname: cleanNickname,
@@ -135,12 +136,17 @@ io.on("connection", (socket) => {
       io.to(room.code).emit("participantJoined", cleanNickname);
     }
     io.to(room.code).emit("roomState", publicState(room));
-    socket.emit("playerState", {
-      videoId: room.nowPlaying?.videoId ?? null,
-      playing: false,
-      positionSec: 0,
-      durationSec: room.nowPlaying?.durationSec ?? 0,
-    });
+    if (isHost) {
+      if (room.playerState) socket.emit("playerState", room.playerState);
+    } else {
+      socket.emit("playerState", {
+        videoId: room.nowPlaying?.videoId ?? null,
+        playing: false,
+        positionSec: 0,
+        durationSec: room.nowPlaying?.durationSec ?? 0,
+        repeatOn: false,
+      });
+    }
   });
 
   socket.on("room:leave", () => {
@@ -212,7 +218,16 @@ io.on("connection", (socket) => {
     const room = getRoom(code);
     if (!room || token !== room.hostToken) return;
     touchRoom(room);
+    room.playerState = state;
     socket.to(code).emit("playerState", state);
+  });
+
+  socket.on("room:ping", () => {
+    const code = socket.data.roomCode;
+    if (!code) return;
+    const room = getRoom(code);
+    const participant = room?.participants.get(socket.id);
+    if (participant) participant.lastSeen = Date.now();
   });
 
   socket.on("guest:action", (action: GuestAction) => {
@@ -232,6 +247,10 @@ io.on("connection", (socket) => {
     if (!room) return;
     if (room.hostSocketId === socket.id) {
       room.hostSocketId = null;
+      const st = room.playerState;
+      if (st) {
+        io.to(code).emit("playerState", { ...st, playing: false });
+      }
     }
     const left = removeParticipant(room, socket.id);
     if (left) io.to(code).emit("participantLeft", left);
@@ -240,7 +259,12 @@ io.on("connection", (socket) => {
 });
 
 setInterval(() => {
-  for (const code of sweepRooms()) {
+  const { expiredRooms, leftParticipants } = sweepRooms();
+  for (const { code, nickname } of leftParticipants) {
+    io.to(code).emit("participantLeft", nickname);
+    broadcastRoom(io, code);
+  }
+  for (const code of expiredRooms) {
     io.to(code).emit("error", "Room expired");
   }
 }, 60 * 1000).unref();

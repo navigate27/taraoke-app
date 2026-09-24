@@ -35,6 +35,7 @@ export function createRoom(): Room {
     queue: [],
     nowPlaying: null,
     history: [],
+    playerState: null,
     createdAt: Date.now(),
     lastActivityAt: Date.now(),
   };
@@ -135,21 +136,26 @@ export function removeParticipant(room: Room, socketId: string): string | null {
   return participant.nickname;
 }
 
-export function sweepRooms(): string[] {
+export function sweepRooms(): {
+  expiredRooms: string[];
+  leftParticipants: { code: string; nickname: string }[];
+} {
   const now = Date.now();
-  const expired: string[] = [];
+  const expiredRooms: string[] = [];
+  const leftParticipants: { code: string; nickname: string }[] = [];
   for (const [code, room] of rooms) {
     for (const [socketId, participant] of room.participants) {
       if (now - participant.lastSeen > PARTICIPANT_TIMEOUT_MS) {
         room.participants.delete(socketId);
+        leftParticipants.push({ code, nickname: participant.nickname });
       }
     }
     if (now - room.lastActivityAt > ROOM_IDLE_MS) {
       rooms.delete(code);
-      expired.push(code);
+      expiredRooms.push(code);
     }
   }
-  return expired;
+  return { expiredRooms, leftParticipants };
 }
 
 export type { HostAction };

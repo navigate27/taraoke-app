@@ -10,7 +10,7 @@ export interface YTPlayer {
   isMuted(): boolean;
   getCurrentTime(): number;
   getDuration(): number;
-  seekTo(seconds: number): void;
+  seekTo(seconds: number, allowSeekAhead?: boolean): void;
   destroy(): void;
 }
 

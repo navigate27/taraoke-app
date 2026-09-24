@@ -54,7 +54,7 @@ export function GuestQueuePanel({
               />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{nowPlaying.title}</p>
-                <ParticipantChip nickname={nowPlaying.addedBy} />
+                <ParticipantChip nickname={nowPlaying.addedBy} size="sm" />
               </div>
             </div>
           </>
@@ -87,7 +87,7 @@ export function GuestQueuePanel({
             />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{item.title}</p>
-              <ParticipantChip nickname={item.addedBy} />
+              <ParticipantChip nickname={item.addedBy} size="sm" />
             </div>
           </div>
         ))}
@@ -109,7 +109,7 @@ export function GuestQueuePanel({
                 />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{item.title}</p>
-                  <ParticipantChip nickname={item.addedBy} />
+                  <ParticipantChip nickname={item.addedBy} size="sm" />
                 </div>
                 {addedVideoIds.has(item.videoId) ? (
                   <Check

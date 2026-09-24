@@ -47,6 +47,7 @@ export function Guest({ code, nickname, onExit }: Props) {
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [repeatOn, setRepeatOn] = useState(false);
   const [videoVisible, setVideoVisible] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -63,10 +64,19 @@ export function Guest({ code, nickname, onExit }: Props) {
     socket.emit("room:join", code, nickname, null, (res) => {
       if (!res.ok) onExit();
     });
+    const pingTimer = window.setInterval(() => socket.emit("room:ping"), 25000);
     const onRoomState = (s: PublicRoomState) => setState(s);
+    const onParticipantJoined = (joined: string) => {
+      showToast(`${joined} joined the room`);
+    };
+    const onParticipantLeft = (left: string) => {
+      if (left === nickname) return;
+      showToast(`${left} left the room`);
+    };
     const onPlayerState = (p: PlayerState) => {
       setPosition(p.positionSec);
       setDuration(p.durationSec ?? 0);
+      setRepeatOn(p.repeatOn);
       if (!p.videoId) {
         lastLoadedRef.current = null;
         localPlayingRef.current = false;
@@ -87,23 +97,32 @@ export function Guest({ code, nickname, onExit }: Props) {
         return;
       }
       const player = playerRef.current;
-      if (!player || !readyRef.current) return;
-      const local = player.getCurrentTime() || 0;
-      if (p.playing && Math.abs(local - p.positionSec) > 2) {
-        player.seekTo(p.positionSec);
+      if (player && readyRef.current) {
+        const local = player.getCurrentTime() || 0;
+        if (p.playing && Math.abs(local - p.positionSec) > 2) {
+          player.seekTo(p.positionSec);
+        }
       }
       if (p.playing !== localPlayingRef.current) {
         localPlayingRef.current = p.playing;
         setPlaying(p.playing);
-        if (p.playing) player.playVideo();
-        else player.pauseVideo();
+        if (player && readyRef.current) {
+          if (p.playing) player.playVideo();
+          else player.pauseVideo();
+        }
       }
     };
     socket.on("roomState", onRoomState);
+    socket.on("participantJoined", onParticipantJoined);
+    socket.on("participantLeft", onParticipantLeft);
     socket.on("playerState", onPlayerState);
     return () => {
       socket.off("roomState", onRoomState);
+      socket.off("participantJoined", onParticipantJoined);
+      socket.off("participantLeft", onParticipantLeft);
       socket.off("playerState", onPlayerState);
+      window.clearInterval(pingTimer);
+      window.clearTimeout(toastTimer.current);
       socket.emit("room:leave");
     };
   }, [code, nickname, onExit]);
@@ -192,6 +211,10 @@ export function Guest({ code, nickname, onExit }: Props) {
     emitAction({ type: "seek", positionSec: Math.max(0, current + delta) });
   }
 
+  function toggleRepeat() {
+    emitAction({ type: "repeat", on: !repeatOn });
+  }
+
   function addToQueue(result: SearchResult) {
     socket.emit(
       "queue:add",
@@ -257,9 +280,14 @@ export function Guest({ code, nickname, onExit }: Props) {
           muted={muted}
           videoVisible={videoVisible}
           ownsCurrent={ownsCurrent}
+          repeatOn={repeatOn}
           remaining={remaining}
           progress={progress}
           containerRef={containerRef}
+          onTogglePlay={() =>
+            emitAction({ type: playing ? "pause" : "play" })
+          }
+          onToggleRepeat={toggleRepeat}
           onToggleMute={toggleMute}
           onSeek={seekBy}
           onShowVideo={showVideo}

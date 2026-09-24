@@ -1,7 +1,8 @@
 import type { RefObject } from "react";
-import { Play, Volume2, VolumeX } from "pixelarticons/react";
+import { Play } from "pixelarticons/react";
 import type { QueueItem } from "../../../../shared/types";
 import { ParticipantChip } from "../../components/ParticipantChip";
+import { PlayerControls } from "../../components/PlayerControls";
 
 interface Props {
   nowPlaying: QueueItem | null;
@@ -9,8 +10,10 @@ interface Props {
   remaining: string;
   progress: number;
   muted: boolean;
+  repeatOn: boolean;
   containerRef: RefObject<HTMLDivElement | null>;
   onTogglePlay: () => void;
+  onToggleRepeat: () => void;
   onSeek: (delta: number) => void;
   onToggleMute: () => void;
   onNext: () => void;
@@ -22,8 +25,10 @@ export function HostPlayerPanel({
   remaining,
   progress,
   muted,
+  repeatOn,
   containerRef,
   onTogglePlay,
+  onToggleRepeat,
   onSeek,
   onToggleMute,
   onNext,
@@ -72,7 +77,7 @@ export function HostPlayerPanel({
               <p className="text-lg font-semibold">{nowPlaying.title}</p>
               <div className="mt-1 flex items-center gap-2 text-sm text-arc-500">
                 <span className="truncate">{nowPlaying.channel}</span>
-                <ParticipantChip nickname={nowPlaying.addedBy} />
+                <ParticipantChip nickname={nowPlaying.addedBy} size="sm" />
               </div>
             </div>
             <span className="font-press text-[20px] text-gold-500 [text-shadow:0_0_8px_rgba(255,210,62,.55)]">
@@ -87,53 +92,19 @@ export function HostPlayerPanel({
           </div>
         </>
       )}
-      <div className="flex items-center justify-center gap-4" aria-label="Player controls">
-        <button
-          onClick={() => onSeek(-10)}
-          disabled={!nowPlaying}
-          className="btn btn-ghost h-14 px-3 text-[10px] disabled:opacity-30"
-          aria-label="Back 10 seconds"
-        >
-          -10
-        </button>
-        <button
-          onClick={onTogglePlay}
-          disabled={!nowPlaying}
-          className="btn btn-primary h-16 w-16 text-[14px] disabled:opacity-30"
-          aria-label={playing ? "Pause" : "Play"}
-        >
-          {playing ? "❚❚" : "▶"}
-        </button>
-        <button
-          onClick={() => onSeek(10)}
-          disabled={!nowPlaying}
-          className="btn btn-ghost h-14 px-3 text-[10px] disabled:opacity-30"
-          aria-label="Forward 10 seconds"
-        >
-          +10
-        </button>
-        <button
-          onClick={onNext}
-          disabled={!nowPlaying}
-          className="btn btn-ghost h-14 w-14 disabled:opacity-30"
-          aria-label="Next — play the next song"
-        >
-          ⏭
-        </button>
-        <button
-          onClick={onToggleMute}
-          disabled={!nowPlaying}
-          title={muted ? "Sound off — click to unmute" : "Sound on — click to mute"}
-          aria-label={muted ? "Unmute" : "Mute"}
-          className={`btn btn-ghost h-14 w-14 disabled:opacity-30 ${
-            muted
-              ? "text-arc-500 opacity-70"
-              : "text-cyan-500 [box-shadow:5px_5px_0_#05030C,0_0_12px_rgba(62,240,255,.45)] [text-shadow:0_0_8px_rgba(62,240,255,.7)]"
-          }`}
-        >
-          {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-        </button>
-      </div>
+      <PlayerControls
+        playing={playing}
+        muted={muted}
+        hasSong={!!nowPlaying}
+        canControl={!!nowPlaying}
+        repeatOn={repeatOn}
+        containerRef={containerRef}
+        onTogglePlay={onTogglePlay}
+        onToggleRepeat={onToggleRepeat}
+        onToggleMute={onToggleMute}
+        onSeek={onSeek}
+        onNext={onNext}
+      />
     </section>
   );
 }

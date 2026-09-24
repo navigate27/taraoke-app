@@ -99,7 +99,7 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
             onClick={() => setTab("join")}
             className={`btn h-12 py-3 text-[10px] ${tab === "join" ? "btn-accent" : "btn-ghost text-arc-500"}`}
           >
-            Insert coin
+            Join
           </button>
         </div>
 

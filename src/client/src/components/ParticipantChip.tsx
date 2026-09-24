@@ -17,21 +17,29 @@ export function chipStyleFor(nickname: string) {
 interface Props {
   nickname: string;
   isHost?: boolean;
+  size?: "md" | "sm";
 }
 
-export function ParticipantChip({ nickname, isHost = false }: Props) {
+export function ParticipantChip({ nickname, isHost = false, size = "md" }: Props) {
   const style = chipStyleFor(nickname);
+  const sm = size === "sm";
   return (
     <span
       title={isHost ? `${nickname} — host` : nickname}
-      className="flex items-center gap-2 rounded-full border-2 border-cab-700 bg-cab-700 py-1 pr-3 pl-1.5"
+      className={`flex w-fit items-center rounded-full border-2 border-cab-700 bg-cab-700 ${
+        sm ? "gap-1.5 py-0.5 pr-2 pl-1" : "gap-2 py-1 pr-3 pl-1.5"
+      }`}
     >
       <span
-        className={`crt flex h-6 w-6 items-center justify-center rounded-full border-2 ${style.border} ${style.text} ${style.glow} font-press text-[8px]`}
+        className={`crt flex items-center justify-center rounded-full border-2 ${style.border} ${style.text} ${style.glow} font-press ${
+          sm ? "h-4 w-4 text-[6px]" : "h-6 w-6 text-[8px]"
+        }`}
       >
         {nickname.charAt(0).toUpperCase()}
       </span>
-      <span className="text-xs font-bold text-arc-100">{nickname}</span>
+      <span className={`${sm ? "text-[11px]" : "text-xs"} font-bold text-arc-100`}>
+        {nickname}
+      </span>
       {isHost && (
         <Star
           role="img"

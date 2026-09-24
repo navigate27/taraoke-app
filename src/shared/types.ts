@@ -26,6 +26,7 @@ export interface Room {
   queue: QueueItem[];
   nowPlaying: QueueItem | null;
   history: QueueItem[];
+  playerState: PlayerState | null;
   createdAt: number;
   lastActivityAt: number;
 }
@@ -43,6 +44,7 @@ export interface PlayerState {
   playing: boolean;
   positionSec: number;
   durationSec: number;
+  repeatOn: boolean;
 }
 
 export type HostAction =
@@ -59,7 +61,8 @@ export type GuestAction =
   | { type: "play" }
   | { type: "pause" }
   | { type: "seek"; positionSec: number }
-  | { type: "next" };
+  | { type: "next" }
+  | { type: "repeat"; on: boolean };
 
 export type ServerToClientEvents = {
   roomState: (state: PublicRoomState) => void;
@@ -98,4 +101,5 @@ export type ClientToServerEvents = {
     },
     callback: (res: { ok: boolean; position?: number; error?: string }) => void,
   ) => void;
+  "room:ping": () => void;
 };
