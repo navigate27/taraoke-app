@@ -103,7 +103,7 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
         >
           Taraoke
         </h1>
-        <p className="mt-3 text-arc-500">Instant karaoke rooms. No account needed.</p>
+        <p className="mt-3 text-arc-500">Insert coin. Grab a mic. No signups, endless karaoke.</p>
       </header>
 
       <section className="crt panel w-full max-w-sm p-6" data-testid="home-panel">
