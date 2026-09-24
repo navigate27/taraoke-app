@@ -39,4 +39,14 @@ describe("HeuristicAnalyzer", () => {
     a.reset();
     expect(a.processWindow(tone(220)).confidence).toBeGreaterThanOrEqual(0); // no crash, sane frame
   });
+
+  it("regression: 220 Hz sine lands on the correlation peak, not its rising edge", () => {
+    const a = new HeuristicAnalyzer();
+    for (let i = 0; i < 30; i++) a.processWindow(tone(0.001, 0.001, i * WINDOW)); // calibrate on quiet room
+    const f = a.processWindow(tone(220));
+    expect(f.hz).not.toBeNull();
+    expect(f.hz!).toBeGreaterThanOrEqual(210);
+    expect(f.hz!).toBeLessThanOrEqual(230);
+    expect(f.confidence).toBeLessThanOrEqual(1);
+  });
 });

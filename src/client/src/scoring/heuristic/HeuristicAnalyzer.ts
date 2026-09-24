@@ -27,15 +27,20 @@ function estimatePitch(frame: Float32Array, sampleRate: number): { hz: number; c
     }
   }
   if (best < 0.5) return null;
-  // Prefer the smallest lag with near-best correlation (avoids octave-down errors).
+  // Prefer the smallest lag with near-best correlation that is also a local
+  // maximum. The threshold alone stops at the rising edge of the peak, biasing
+  // smooth waveforms sharp (~7% high); requiring a local maximum selects the
+  // peak itself. The global best lag always qualifies, so a match exists.
   let bestLag = -1;
   for (let lag = minLag; lag <= maxLag; lag++) {
-    if (norms[lag]! >= 0.9 * best) {
+    if (norms[lag]! < 0.9 * best) continue;
+    const prev = lag > minLag ? norms[lag - 1]! : -Infinity;
+    const next = lag < maxLag ? norms[lag + 1]! : -Infinity;
+    if (norms[lag]! >= prev && norms[lag]! >= next) {
       bestLag = lag;
       break;
     }
   }
-  if (bestLag < 0) return null;
   return { hz: sampleRate / bestLag, confidence: norms[bestLag]! };
 }
 
@@ -51,7 +56,7 @@ export class HeuristicAnalyzer implements PitchAnalyzer {
     const voiced = pitch !== null && pitch.confidence >= 0.6 && rms > floor * 1.5;
     return {
       voiced,
-      confidence: voiced ? pitch.confidence : 0.05,
+      confidence: voiced ? Math.min(1, Math.max(0, pitch.confidence)) : 0.05,
       hz: voiced ? pitch.hz : null,
       energy,
     };
