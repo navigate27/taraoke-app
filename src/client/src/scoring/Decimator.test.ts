@@ -46,6 +46,34 @@ describe("Decimator", () => {
     expect(Math.abs(zeroCrossings(total) - 2200)).toBeLessThan(22);
   });
 
+  it("non-divisible input: chunked output matches single-shot decimation", () => {
+    // 4000 samples @ 44.1k = 1451.27 strides — chunk boundaries land mid-stride,
+    // so a decimator that resets its phase per chunk cannot reproduce the
+    // single-shot position grid. 1000-sample chunking has no interior seam
+    // straddled by an output position (the only straddled position, 3999.32,
+    // is the signal end, clamped identically in both paths).
+    const rate = 44100;
+    const full = sine(220, 4000, rate);
+    const single = new Decimator(rate).process(full);
+    expect(single.length).toBe(1452); // floor(4000 / 2.75625) + 1
+
+    const d = new Decimator(rate);
+    const outs: Float32Array[] = [];
+    for (let off = 0; off < full.length; off += 1000) {
+      outs.push(d.process(full.slice(off, off + 1000)));
+    }
+    const total = new Float32Array(outs.reduce((n, o) => n + o.length, 0));
+    let at = 0;
+    for (const o of outs) {
+      total.set(o, at);
+      at += o.length;
+    }
+    expect(total.length).toBe(single.length);
+    for (let i = 0; i < single.length; i++) {
+      expect(Math.abs(total[i]! - single[i]!)).toBeLessThan(1e-6);
+    }
+  });
+
   it("reset clears phase", () => {
     const d = new Decimator(48000);
     d.process(sine(220, 4800, 48000));
