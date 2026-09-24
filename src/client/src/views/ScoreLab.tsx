@@ -269,6 +269,12 @@ export function ScoreLab() {
           <h2 className="mb-3 font-press text-[9px] uppercase tracking-[0.2em] text-arc-500">
             Live meters
           </h2>
+          {listening && !running && (
+            <p className="mb-3 text-xs text-arc-500" data-testid="lab-mic-check-hint">
+              Mic check — the bars and trace should move as you speak or sing.
+              Press Start run when ready.
+            </p>
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Meter
               label="Voicing confidence"

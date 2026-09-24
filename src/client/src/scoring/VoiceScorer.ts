@@ -126,9 +126,10 @@ export class VoiceScorer {
   }
 
   private handleFrames(frames: FrameAnalysis[]): void {
-    if (!this.active || this.paused) return;
     for (const f of frames) {
-      this.metrics.process(f);
+      if (this.active && !this.paused) this.metrics.process(f);
+      // Frames flow whenever the mic is up — pre-run frames feed the lab's
+      // mic-check meter; only run-active frames accumulate into the score.
       this.onFrame?.(f);
     }
   }
