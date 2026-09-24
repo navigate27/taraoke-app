@@ -20,7 +20,7 @@ interface Props {
   containerRef: RefObject<HTMLDivElement | null>;
   videoRef: RefObject<HTMLVideoElement | null>;
   reveal: RevealState | null;
-  onDismissReveal: () => void;
+  onAdvanceReveal: () => void;
   onVideoPlay: () => void;
   onVideoPause: () => void;
   onVideoEnded: () => void;
@@ -42,7 +42,7 @@ export function HostPlayerPanel({
   containerRef,
   videoRef,
   reveal,
-  onDismissReveal,
+  onAdvanceReveal,
   onVideoPlay,
   onVideoPause,
   onVideoEnded,
@@ -108,7 +108,7 @@ export function HostPlayerPanel({
           <ScoreReveal
             score={reveal.score}
             nickname={reveal.nickname}
-            onDismiss={onDismissReveal}
+            onAdvance={onAdvanceReveal}
           />
         )}
         {!nowPlaying && (

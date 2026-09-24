@@ -215,10 +215,42 @@
   animation: track-flip 260ms ease-out;
 }
 
+/* Score-reveal celebration: one scale pop, then a few gold glow pulses. */
+@keyframes score-celebrate-pop {
+  0% {
+    transform: scale(0.5);
+  }
+  55% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes score-celebrate-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 18px rgba(255, 210, 62, 0.6), 4px 4px 0 var(--color-crt-000);
+  }
+  50% {
+    text-shadow: 0 0 44px rgba(255, 210, 62, 0.95), 0 0 90px rgba(255, 210, 62, 0.55),
+      4px 4px 0 var(--color-crt-000);
+  }
+}
+.score-celebrate {
+  animation: score-celebrate-pop 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.score-celebrate-glow {
+  text-shadow: 0 0 18px rgba(255, 210, 62, 0.6), 4px 4px 0 var(--color-crt-000);
+  animation: score-celebrate-glow 1.2s ease-in-out 3;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .coin-blink,
   .up-next-pulse,
-  .track-flip {
+  .track-flip,
+  .score-celebrate,
+  .score-celebrate-glow {
     animation: none;
   }
 }
