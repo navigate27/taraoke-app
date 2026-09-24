@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Close } from "pixelarticons/react";
+import { Check, Close } from "pixelarticons/react";
 import type { SearchResult } from "../../../server/youtube";
 import { fetchSongs } from "../lib/search";
 
@@ -105,7 +105,7 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
                   <p className="text-[11px] text-arc-500">{result.channel}</p>
                 </div>
                 {added ? (
-                  <span className="font-press text-[8px] text-cyan-500">✓</span>
+                  <Check role="img" aria-label="Added" className="h-4 w-4 text-cyan-500" />
                 ) : (
                   <button
                     onClick={() => onAdd(result)}

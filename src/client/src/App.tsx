@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Home } from "./views/Home";
-import { Host, saveHost } from "./views/Host";
-import { Guest, saveGuest } from "./views/Guest";
+import { Host, saveHost } from "./views/host/Host";
+import { Guest, saveGuest } from "./views/guest/Guest";
 
 type Screen =
   | { view: "home"; joinCode: string | null }

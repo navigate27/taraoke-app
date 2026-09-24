@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { socket } from "../lib/socket";
-import { clearGuest, loadGuest, saveGuest } from "./Guest";
-import { clearHost, loadHost } from "./Host";
+import { clearGuest, loadGuest, saveGuest } from "./guest/Guest";
+import { clearHost, loadHost } from "./host/Host";
 
 interface Props {
   joinCode: string | null;

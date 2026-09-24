@@ -204,11 +204,14 @@ Core vocabulary (used everywhere, never paraphrased):
 ## 8. Iconography & imagery
 
 - Icons: **Pixelarticons** (`pixelarticons/react`, MIT) — 1-bit pixel icons on a 24px
-  grid, the native companion to Press Start 2P. Used for all functional UI: close,
-  search, volume (Volume2/VolumeX), eye (Eye/EyeOff), host star (Star), played check
-  (Check). Sized 16–20px via CSS classes; glows on SVG icons use `drop-shadow` filter.
+  grid, the native companion to Press Start 2P. Used for all functional UI: close ✕
+  (Close), search, volume (Volume2/VolumeX), eye (Eye/EyeOff), host star (Star),
+  played check (Check), play (Play), now-playing note (Music), reorder
+  (ArrowUp/ArrowDown). Sized 16–20px via CSS classes; glows on SVG icons use
+  `drop-shadow` filter.
 - Transport keeps **unicode glyphs** (▶ ❚❚ ⏭) — pixel-font-native and the
-  arcade-authentic look; don't replace them with an icon pack.
+  arcade-authentic look; don't replace them with an icon pack. The `★ Taraoke ★`
+  marquee is brand decoration, also kept as text.
 - No stock photos of people singing. Imagery is the machine itself: CRT panels,
   speaker-grille texture at ≤4% contrast, bezels.
 - Thumbnails (YouTube) are the app's de facto imagery — keep chrome quiet so they read

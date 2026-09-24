@@ -78,9 +78,11 @@ default) and can control playback only for songs they added.
   - Play / pause / skip current song.
   - Reorder, remove, or clear queue items.
 - Queue item states: `queued → playing → done` (and `skipped`).
-- Queue panel is organized top-to-bottom: **Now playing** → **Next** (the FIFO queue)
-  → **Previously played** (recently finished songs, newest first).
-- Each item shows: thumbnail, title, added-by nickname, duration.
+- Queue panel is organized top-to-bottom: **Now playing** → **Next** (the FIFO queue,
+  with its item count) → **Previously played** (recently finished songs, newest first).
+- Each item shows: thumbnail, title, added-by nickname (as a participant chip), duration.
+- Removing a queued item asks the host to confirm. Played songs can be queued again
+  (button on each played row; shows "Added" instead when the song is already queued).
 - Guests see the queue live and a **"You're up next!"** notification when their song is
   1 away.
 

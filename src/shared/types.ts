@@ -42,6 +42,7 @@ export interface PlayerState {
   videoId: string | null;
   playing: boolean;
   positionSec: number;
+  durationSec: number;
 }
 
 export type HostAction =

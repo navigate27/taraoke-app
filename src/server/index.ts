@@ -139,6 +139,7 @@ io.on("connection", (socket) => {
       videoId: room.nowPlaying?.videoId ?? null,
       playing: false,
       positionSec: 0,
+      durationSec: room.nowPlaying?.durationSec ?? 0,
     });
   });
 
