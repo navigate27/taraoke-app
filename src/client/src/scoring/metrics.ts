@@ -53,10 +53,12 @@ interface Options {
   phraseTargetSec?: number; // sustained singing at/above this scores 1.0
 }
 
+// Sustained singing at/above this scores 1.0 on the phrases component.
+export const PHRASE_TARGET_SEC = 12;
+
 export class PerformanceMetrics {
   private readonly windowSec: number;
   private readonly phraseTargetSec: number;
-  private floor = new NoiseFloorTracker();
   private frames = 0;
   private voiced = 0;
   private streak = 0;
@@ -72,12 +74,11 @@ export class PerformanceMetrics {
 
   constructor(opts?: Options) {
     this.windowSec = opts?.windowSec ?? 0.064;
-    this.phraseTargetSec = opts?.phraseTargetSec ?? 12;
+    this.phraseTargetSec = opts?.phraseTargetSec ?? PHRASE_TARGET_SEC;
   }
 
   process(frame: FrameAnalysis): void {
     this.frames++;
-    this.floor.push(frame.energy);
     if (frame.voiced) {
       this.voiced++;
       this.streak++;
@@ -141,7 +142,6 @@ export class PerformanceMetrics {
     this.centsX = 0;
     this.centsX2 = 0;
     this.centsN = 0;
-    this.floor.reset();
   }
 }
 

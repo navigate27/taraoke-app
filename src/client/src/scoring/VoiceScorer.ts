@@ -121,6 +121,7 @@ export class VoiceScorer {
       windows: new WindowAssembler(FALLBACK_WINDOW_SAMPLES),
       analyzer: new HeuristicAnalyzer(),
     };
+    // Metrics are rebuilt on fallback, so a post-crash final score reflects only post-fallback frames — stride changes (128 ms → 64 ms) and mustn't mix.
     this.setMode("heuristic");
   }
 

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { VoiceScorer, type ScorerStatus } from "../scoring/VoiceScorer";
+import { PHRASE_TARGET_SEC } from "../scoring/metrics";
 import type { FrameAnalysis, Grade, ScoreResult } from "../scoring/types";
 
-// PerformanceMetrics default phrase target (seconds) — phrases = streak / 12,
-// so the live streak readout derives from the preview's phrases component.
-const PHRASE_TARGET_SEC = 12;
+// Live streak readout derives from the preview's phrases component, using
+// metrics' exported phrase-target constant so it can't desync from tuning.
 const TRACE_WINDOW_MS = 15_000;
 // Log pitch band for the trace. The brief's 200–800 Hz floor would hide male
 // fundamentals; 100 Hz keeps the same log shape and covers bass voices.

@@ -4,7 +4,7 @@
  * window is emitted in order and the leftover tail carries across chunks —
  * no gaps, no duplicated samples, regardless of chunk boundaries.
  *
- * Shared by the CREPE worker (2048-sample windows) and VoiceScorer's
+ * Shared by the CREPE worker (1024-sample windows) and VoiceScorer's
  * main-thread heuristic fallback (1024-sample windows).
  */
 export class WindowAssembler {
