@@ -15,7 +15,7 @@ interface Props {
   onAdd: (result: SearchResult) => void;
 }
 
-const SHOW_COUNT = 4;
+const SHOW_COUNT = 20;
 const MAX_PAGES = 6;
 
 function cleanSeed(seed: string): string {
@@ -171,30 +171,32 @@ export function SongSuggestions({
         )}
       </div>
       {loading && <p className="mb-3 text-sm text-arc-500">Looking for songs…</p>}
-      {revealed &&
-        visible.map((r) => (
-        <div
-          key={r.videoId}
-          className="mb-2.5 grid grid-cols-[64px_1fr_auto] items-center gap-3 rounded-[4px] border-[3px] border-cab-700 bg-cab-800 p-2"
-        >
-          <img
-            src={r.thumbnail}
-            alt=""
-            className="aspect-video w-[64px] rounded-[4px] border-2 border-cab-700 object-cover"
-          />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{r.title}</p>
-            <p className="truncate text-xs text-arc-500">{r.channel}</p>
-          </div>
-          <button
-            onClick={() => onAdd(r)}
-            className="btn btn-accent h-9 px-3 text-[9px]"
-            aria-label={`Add ${r.title} to queue`}
+      <div className="scroll-thin max-h-[400px] overflow-y-auto pr-1">
+        {revealed &&
+          visible.map((r) => (
+          <div
+            key={r.videoId}
+            className="mb-1 grid grid-cols-[64px_1fr_auto] items-center gap-3 rounded-[4px] border-[3px] border-cab-700 bg-cab-800 p-2"
           >
-            Add
-          </button>
-        </div>
-      ))}
+            <img
+              src={r.thumbnail}
+              alt=""
+              className="aspect-video w-[64px] rounded-[4px] border-2 border-cab-700 object-cover"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{r.title}</p>
+              <p className="truncate text-xs text-arc-500">{r.channel}</p>
+            </div>
+            <button
+              onClick={() => onAdd(r)}
+              className="btn btn-accent h-9 px-3 text-[9px]"
+              aria-label={`Add ${r.title} to queue`}
+            >
+              Add
+            </button>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

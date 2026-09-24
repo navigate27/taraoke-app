@@ -82,14 +82,19 @@ export function startPlayback(room: Room, item: QueueItem): void {
 
 export function advanceQueue(room: Room): void {
   if (room.nowPlaying) {
-    room.nowPlaying.state = "done";
-    room.history.unshift(room.nowPlaying);
+    pushHistory(room, room.nowPlaying);
     room.nowPlaying = null;
   }
   const next = room.queue.shift();
   if (next) {
     startPlayback(room, next);
   }
+}
+
+function pushHistory(room: Room, item: QueueItem): void {
+  item.state = "done";
+  room.history.unshift(item);
+  if (room.history.length > 50) room.history.length = 50;
 }
 
 export function applyHostAction(room: Room, action: HostAction): void {
@@ -106,8 +111,7 @@ export function applyHostAction(room: Room, action: HostAction): void {
       const idx = room.queue.findIndex((q) => q.id === action.itemId);
       if (idx >= 0) {
         if (room.nowPlaying) {
-          room.nowPlaying.state = "done";
-          room.history.unshift(room.nowPlaying);
+          pushHistory(room, room.nowPlaying);
         }
         startPlayback(room, room.queue[idx]!);
         room.queue.splice(idx, 1);

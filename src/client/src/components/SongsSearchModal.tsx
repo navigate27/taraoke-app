@@ -67,6 +67,9 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
       aria-modal="true"
       aria-label="Add songs"
       data-testid="search-modal"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="panel crt flex max-h-[85vh] w-[560px] max-w-full flex-col p-5">
         <div className="flex items-baseline justify-between">

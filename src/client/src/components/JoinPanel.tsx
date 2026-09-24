@@ -34,9 +34,10 @@ export function JoinPanel({ code, participants, collapsibleJoin = false, childre
           data-testid="join-toggle"
           onClick={() => setJoinOpen((open) => !open)}
           aria-expanded={joinOpen}
-          className="mb-4 self-start font-press text-[13px] text-gold-500 [text-shadow:2px_2px_0_#5C4A0E]"
+          className="btn btn-ghost mb-4 flex w-full items-center justify-center gap-3 rounded-[4px] border-[3px] border-gold-500/60 px-4 py-4 font-press text-[12px] text-gold-500 [text-shadow:2px_2px_0_#5C4A0E] [box-shadow:0_0_12px_rgba(255,210,62,.25)]"
         >
-          Join the room {joinOpen ? "▴" : "▾"}
+          Join the room
+          <span aria-hidden className="text-[10px]">{joinOpen ? "▲" : "▼"}</span>
         </button>
       ) : (
         <h2

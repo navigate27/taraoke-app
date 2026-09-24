@@ -59,6 +59,7 @@ export function HostQueuePanel({
   } | null>(null);
 
   queueRef.current = queue;
+  const playedVisible = history.filter((item) => !addedVideoIds.has(item.videoId));
 
   useEffect(() => {
     const EDGE_PX = 48;
@@ -277,7 +278,7 @@ export function HostQueuePanel({
             Played
           </button>
         </div>
-        <div className="scroll-thin mb-3 max-h-[360px] overflow-y-auto pr-1"
+        <div className="scroll-thin mb-3 max-h-[360px] min-h-0 flex-1 overflow-y-auto pr-1"
         data-queue-scroll>
         {tab === "next" && queue.length === 0 && (
           <p data-testid="queue-empty" className="mb-3 text-sm text-arc-500">
@@ -382,14 +383,14 @@ export function HostQueuePanel({
           ))}
         </div>
         )}
-        {tab === "played" && history.length === 0 && (
+        {tab === "played" && playedVisible.length === 0 && (
           <p data-testid="history-empty" className="mb-3 text-sm text-arc-500">
             No songs played yet.
           </p>
         )}
-        {tab === "played" && history.length > 0 && (
+        {tab === "played" && playedVisible.length > 0 && (
           <>
-            {history.map((item) => (
+            {playedVisible.map((item) => (
               <div
                 key={item.id}
                 data-testid={`history-row-${item.id}`}
@@ -405,30 +406,22 @@ export function HostQueuePanel({
                   <p className="truncate text-sm font-semibold">{item.title}</p>
                   <ParticipantChip nickname={item.addedBy} size="sm" />
                 </div>
-                {addedVideoIds.has(item.videoId) ? (
-                  <Check
-                    role="img"
-                    aria-label="Added"
-                    className="mr-1 h-4 w-4 text-cyan-500"
-                  />
-                ) : (
-                  <button
-                    aria-label={`Add ${item.title} to queue again`}
-                    data-testid={`history-btn-readd-${item.id}`}
-                    data-tip="Queue again"
-                    data-tip-side="left"
-                    onClick={() => onReadd(item)}
-                    className="btn btn-ghost h-9 w-9 p-0 text-arc-100"
-                  >
-                    <Redo className="h-4 w-4" />
-                  </button>
-                )}
+                <button
+                  aria-label={`Add ${item.title} to queue again`}
+                  data-testid={`history-btn-readd-${item.id}`}
+                  data-tip="Queue again"
+                  data-tip-side="left"
+                  onClick={() => onReadd(item)}
+                  className="btn btn-ghost h-9 w-9 p-0 text-arc-100"
+                >
+                  <Redo className="h-4 w-4" />
+                </button>
               </div>
             ))}
           </>
         )}
         </div>
-        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="mt-auto">
           <SongSuggestions
             seedCandidates={[nowPlaying, ...queue, ...history]
               .filter((i): i is QueueItem => !!i)

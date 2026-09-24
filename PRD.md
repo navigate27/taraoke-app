@@ -98,7 +98,9 @@ and any guest can control playback — the video and its sound stay on the host 
   paginating further YouTube results (page tokens) until it runs out.
 - Each item shows: thumbnail, title, added-by nickname (as a participant chip), duration.
 - Removing a queued item asks the host to confirm. Played songs can be queued again
-  (button on each played row; shows "Added" instead when the song is already queued).
+  (button on each played row). While a played song is queued, its row leaves the
+  Played list and returns once it is played again. The Played list holds up to
+  **50** songs (oldest dropped beyond that).
 - Guests see the queue live and a **"You're up next!"** notification when their song is
   1 away (it sits between the join panel and the player panel).
 
