@@ -14,7 +14,7 @@ Companion to [PRD.md](./PRD.md). Decisions and rationale for v1 (MVP).
 | Backend | Fastify (Node) — serves API, WebSockets, and static build | Express, NestJS |
 | Room state | In-memory (per-process) | Redis, Postgres |
 | Song search | YouTube Data API v3 (server-side proxy) | Direct client calls (key exposure) |
-| Player | YouTube IFrame Player API (host device only) | Plain `<iframe>` embed |
+| Player | Native HTML5 `<video>` fed by server-side YouTube stream resolver (`youtubei.js`) via `/api/stream/:videoId` proxy | YouTube IFrame Player API (replaced 2026-09, owner decision) |
 | QR codes | `qrcode` (generated client-side) | — |
 | Hosting | Single Node process — Railway / Fly.io / VPS | Vercel (rejected: no persistent WebSockets) |
 
@@ -73,14 +73,19 @@ Idle rooms auto-expire (see PRD §5.6). No database in v1.
 
 ### YouTube integration
 
-- **IFrame Player API** on the host view only — programmatic control
-  (`loadVideoById`, play/pause/seek) and `onStateChange` for auto-advance. A plain
-  `<iframe>` gives none of this.
 - **Search is proxied server-side** so the API key never reaches the browser, with
   response caching to conserve the ~100 free searches/day quota, plus the paste-URL
   fallback (PRD §5.3).
-- ToS guardrails: official player only; never touch raw streams, never strip ads
-  (PRD §9).
+- **Playback** (owner-approved pivot, 2026-09 — replaces the former official-embed-only
+  stance): the server resolves YouTube stream URLs with `youtubei.js`, caches them
+  in memory with a TTL, and proxies the bytes at `GET /api/stream/:videoId` with
+  HTTP Range support (403/expiry triggers a single-flight re-resolve). Host and guest
+  render a plain `<video src="/api/stream/:videoId">` — programmatic control via the
+  standard media API, `ended` → auto-advance. The host device stays the playback
+  source of truth.
+- **Accepted trade-off:** raw stream extraction tracks YouTube's player internals
+  (ToS-gray; `youtubei.js` keeps up); risk register lives in PRD §9. A future service
+  worker must bypass `/api/stream`.
 
 ### Sync model
 
@@ -106,6 +111,7 @@ kr/
       index.ts              # Fastify bootstrap: static + socket + REST proxy
       rooms.ts              # room state, TTL, host-token validation
       youtube.ts            # search proxy + cache
+      stream.ts             # YouTube stream resolver + range proxy (/api/stream)
     shared/
       types.ts              # Room, QueueItem, socket event contracts
 ```

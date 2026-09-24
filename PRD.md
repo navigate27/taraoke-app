@@ -98,16 +98,19 @@ default) and can control playback only for songs they added.
 
 ### 5.5 Playback (YouTube)
 
-- **Player: YouTube IFrame Player API** (not a plain `<iframe>`). Rationale:
-  - Programmatic control: `loadVideoById`, `playVideo`, `pauseVideo`, `seekTo`.
-  - State events (`onStateChange`) → auto-advance to the next queue item on `ENDED`.
-  - Player params: `rel=0` (hide related videos), fullscreen support, minimal chrome.
+- **Player: native HTML5 `<video>`** fed by the server's YouTube stream proxy
+  (`/api/stream/:videoId` — the server resolves YouTube stream URLs, caches them, and
+  pipes bytes with HTTP Range support). Rationale:
+  - Programmatic control via the standard media API: `play/pause`, `currentTime`,
+    `duration`, `muted`.
+  - The `ended` event → auto-advance to the next queue item (with repeat-one support).
+  - Full video container control (no embed chrome) and clean fullscreen.
 - Video plays on the **host device**; audio goes to the room's speakers.
-- Guest phones mirror the video **in sync** via the same IFrame API, **muted by
-  default**. Each guest can unmute their own device locally — per-guest audio only,
+- Guest phones mirror the video **in sync** with their own `<video>` element fed by the
+  same proxy, **muted by default**. Each guest can unmute their own device locally — per-guest audio only,
   it never affects the room or other devices. The host broadcast is the source of
   truth (guests re-seek when drift exceeds ~2s).
-- The guest video panel is **hidden by default** (no iframe is mounted — saves
+- The guest video panel is **hidden by default** (no `<video>` is mounted — saves
   mobile data, CPU, and battery). A "Show video" toggle mounts the synced player
   on demand; the sync broadcasts continue either way (they're only a few bytes/s).
 - Player transport (host and guest panels share one layout), split left/right:
@@ -127,8 +130,6 @@ default) and can control playback only for songs they added.
     source of truth); the server validates ownership (nickname vs
     `nowPlaying.addedBy`) before relaying.
   - Fullscreen is view-local and always available when a song is loaded.
-- Known tradeoff: **YouTube ads may play between songs** on non-Premium accounts.
-  Acceptable for MVP; documented as a known limitation.
 
 ### 5.6 Room lifecycle & edge cases
 
@@ -163,7 +164,7 @@ default) and can control playback only for songs they added.
 | Realtime | WebSockets (Socket.io or Supabase Realtime) | Room events: `queue_updated`, `player_state`, `participant_join/leave` |
 | Backend | Node (host-persisted room state) | Rooms held in memory/Redis; no DB required for MVP |
 | Song search | YouTube Data API v3 (server-side proxy) | Caches popular queries to conserve quota |
-| Player | YouTube IFrame Player API | Host view (authoritative) + guest view (synced, muted by default) |
+| Player | Native HTML5 `<video>` + server stream proxy (`/api/stream/:videoId`) | Host view (authoritative) + guest view (synced, muted by default) |
 | Auth | None | Room code = guest auth; host secret token = host auth |
 
 **Sync model:** the host device is the playback source of truth; it broadcasts
@@ -187,11 +188,12 @@ curated pre-seeded "karaoke staples" list shipped with the app, URL-paste fallba
 
 | Risk | Mitigation |
 |---|---|
-| YouTube ToS: must not download/strip ads/extract audio | Use official IFrame Player API only; never touch raw streams |
+| YouTube stream extraction breaks when YouTube changes player internals | `youtubei.js` is actively maintained; the proxy re-resolves stream URLs on failure and serves an error state the host can skip past. Accepted trade-off per owner decision (2026-09) — replaces the former official-embed-only stance. |
+| googlevideo stream URLs expire / are IP-bound | In-memory URL cache with TTL + single-flight re-resolve on 403; bytes always flow through the server proxy, never a client redirect. |
 | Search quota exhaustion | Caching, seeded catalog, paste-URL fallback |
-| Ads between songs kill the vibe | Documented limitation; future: host's own Premium account |
 | Karaoke search returns non-karaoke videos | Prefer curated karaoke channels in search filter; host previews before play |
 | Host disconnect mid-party | Grace period + reconnect via localStorage host token |
+| Stream proxy bandwidth (host + opt-in guests) | Guest video is opt-in (data-saver default); quality capped at muxed progressive formats; can be lowered to 360p with a one-line change if needed |
 
 ## 10. Future / backlog candidates
 

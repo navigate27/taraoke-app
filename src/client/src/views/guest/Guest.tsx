@@ -10,7 +10,7 @@ import { RoomHeader } from "../../components/RoomHeader";
 import { SongsSearchModal } from "../../components/SongsSearchModal";
 import { normalizeTitle } from "../../../../shared/songTitle";
 import { socket } from "../../lib/socket";
-import { formatClock, loadYouTubeApi, YTEvents, type YTPlayer } from "../../lib/youtube";
+import { formatClock } from "../../lib/formatClock";
 import { GuestPlayerPanel } from "./GuestPlayerPanel";
 import { GuestQueuePanel } from "./GuestQueuePanel";
 
@@ -53,12 +53,13 @@ export function Guest({ code, nickname, onExit }: Props) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
-  const playerRef = useRef<YTPlayer | null>(null);
-  const readyRef = useRef(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const localPlayingRef = useRef(false);
   const mutedRef = useRef(true);
   const lastLoadedRef = useRef<string | null>(null);
   const pendingRef = useRef<{ videoId: string; playing: boolean } | null>(null);
+  const latestStateRef = useRef<PlayerState | null>(null);
+  const errorRetriedRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -75,41 +76,37 @@ export function Guest({ code, nickname, onExit }: Props) {
       showToast(`${left} left the room`);
     };
     const onPlayerState = (p: PlayerState) => {
+      latestStateRef.current = p;
       setPosition(p.positionSec);
       setDuration(p.durationSec ?? 0);
       setRepeatOn(p.repeatOn);
       if (!p.videoId) {
         lastLoadedRef.current = null;
+        pendingRef.current = null;
         localPlayingRef.current = false;
         setPlaying(false);
         return;
       }
       if (p.videoId !== lastLoadedRef.current) {
         lastLoadedRef.current = p.videoId;
-        const player = playerRef.current;
-        if (player && readyRef.current) {
-          if (p.playing) player.loadVideoById(p.videoId);
-          else player.cueVideoById(p.videoId);
-        } else {
-          pendingRef.current = { videoId: p.videoId, playing: p.playing };
-        }
+        pendingRef.current = { videoId: p.videoId, playing: p.playing };
         localPlayingRef.current = p.playing;
         setPlaying(p.playing);
         return;
       }
-      const player = playerRef.current;
-      if (player && readyRef.current) {
-        const local = player.getCurrentTime() || 0;
+      const video = videoRef.current;
+      if (video && video.readyState >= 1) {
+        const local = video.currentTime || 0;
         if (p.playing && Math.abs(local - p.positionSec) > 2) {
-          player.seekTo(p.positionSec);
+          video.currentTime = p.positionSec;
         }
       }
       if (p.playing !== localPlayingRef.current) {
         localPlayingRef.current = p.playing;
         setPlaying(p.playing);
-        if (player && readyRef.current) {
-          if (p.playing) player.playVideo();
-          else player.pauseVideo();
+        if (video) {
+          if (p.playing) video.play().catch(() => {});
+          else video.pause();
         }
       }
     };
@@ -128,58 +125,31 @@ export function Guest({ code, nickname, onExit }: Props) {
     };
   }, [code, nickname, onExit]);
 
+  const videoId = state?.nowPlaying?.videoId ?? null;
+
   useEffect(() => {
-    if (!videoVisible) return;
-    let cancelled = false;
-    let player: YTPlayer | null = null;
-    loadYouTubeApi().then((YT) => {
-      if (cancelled || !containerRef.current) return;
-      const el = document.createElement("div");
-      containerRef.current.appendChild(el);
-      player = new YT.Player(el, {
-        playerVars: {
-          rel: 0,
-          controls: 0,
-          disablekb: 1,
-          modestbranding: 1,
-          iv_load_policy: 3,
-          fs: 0,
-          playsinline: 1,
-          autoplay: 1,
-          mute: 1,
-          origin: window.location.origin,
-        },
-        events: {
-          onReady: () => {
-            readyRef.current = true;
-            if (mutedRef.current) player?.mute();
-            else player?.unMute();
-            const pending = pendingRef.current;
-            if (pending) {
-              if (pending.playing) player?.loadVideoById(pending.videoId);
-              else player?.cueVideoById(pending.videoId);
-              pendingRef.current = null;
-            }
-          },
-          onStateChange: (e) => {
-            if (e.data === YTEvents.ENDED) return;
-            localPlayingRef.current = e.data === YTEvents.PLAYING;
-            setPlaying(e.data === YTEvents.PLAYING);
-          },
-        },
-      }) as YTPlayer;
-      playerRef.current = player;
-    });
-    return () => {
-      cancelled = true;
-      player?.destroy();
-      playerRef.current = null;
-      readyRef.current = false;
-      pendingRef.current = null;
-      lastLoadedRef.current = null;
-      if (containerRef.current) containerRef.current.innerHTML = "";
-    };
-  }, [videoVisible]);
+    errorRetriedRef.current = false;
+  }, [videoId]);
+
+  function handleLoadedMetadata() {
+    const video = videoRef.current;
+    const pending = pendingRef.current;
+    if (!video || !pending) return;
+    pendingRef.current = null;
+    const p = latestStateRef.current;
+    const startAt = p && p.videoId === pending.videoId ? p.positionSec : 0;
+    if (startAt > 0.5) video.currentTime = startAt;
+    if (pending.playing) video.play().catch(() => {});
+    else video.pause();
+  }
+
+  function handleVideoError() {
+    const video = videoRef.current;
+    if (!video || !video.src || errorRetriedRef.current) return;
+    errorRetriedRef.current = true;
+    video.src = `${video.src}${video.src.includes("?") ? "&" : "?"}r=${Date.now()}`;
+    video.play().catch(() => {});
+  }
 
   function showToast(message: string) {
     setToast(message);
@@ -188,19 +158,17 @@ export function Guest({ code, nickname, onExit }: Props) {
   }
 
   function toggleMute() {
-    const player = playerRef.current;
-    if (player) {
-      if (mutedRef.current) player.unMute();
-      else player.mute();
-    }
     mutedRef.current = !mutedRef.current;
+    const video = videoRef.current;
+    if (video) video.muted = mutedRef.current;
     setMuted(mutedRef.current);
   }
 
   function showVideo() {
+    const p = latestStateRef.current;
+    pendingRef.current =
+      p && p.videoId ? { videoId: p.videoId, playing: p.playing } : null;
     setVideoVisible(true);
-    lastLoadedRef.current = null;
-    pendingRef.current = null;
   }
 
   function emitAction(action: GuestAction) {
@@ -208,7 +176,7 @@ export function Guest({ code, nickname, onExit }: Props) {
   }
 
   function seekBy(delta: number) {
-    const current = playerRef.current?.getCurrentTime() || position;
+    const current = videoRef.current?.currentTime || position;
     emitAction({ type: "seek", positionSec: Math.max(0, current + delta) });
   }
 
@@ -293,6 +261,9 @@ export function Guest({ code, nickname, onExit }: Props) {
           remaining={remaining}
           progress={progress}
           containerRef={containerRef}
+          videoRef={videoRef}
+          onLoadedMetadata={handleLoadedMetadata}
+          onVideoError={handleVideoError}
           onTogglePlay={() =>
             emitAction({ type: playing ? "pause" : "play" })
           }

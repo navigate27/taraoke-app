@@ -51,9 +51,10 @@ decide visual questions by screenshotting; the user picks in their browser:
   Vite build. Layout lives in `TECH_STACK.md` §"Project layout".
 - Server owns room state in memory; host token authorizes host actions; guest room
   code is the only guest auth.
-- YouTube: IFrame Player API only, on the host view. Search goes through the
-  server-side proxy — API key never reaches the client. Never touch raw streams or
-  strip ads (ToS).
+- YouTube playback: native HTML5 `<video>` fed by the server's stream resolver +
+  range proxy (`/api/stream/:videoId`, built on `youtubei.js`) — owner-approved
+  pivot, 2026-09; accepted trade-offs live in PRD §9. Search still goes through the
+  server-side Data API proxy — API key never reaches the client.
 
 ## General
 

@@ -15,6 +15,9 @@ interface Props {
   remaining: string;
   progress: number;
   containerRef: RefObject<HTMLDivElement | null>;
+  videoRef: RefObject<HTMLVideoElement | null>;
+  onLoadedMetadata: () => void;
+  onVideoError: () => void;
   onTogglePlay: () => void;
   onToggleRepeat: () => void;
   onToggleMute: () => void;
@@ -33,6 +36,9 @@ export function GuestPlayerPanel({
   remaining,
   progress,
   containerRef,
+  videoRef,
+  onLoadedMetadata,
+  onVideoError,
   onTogglePlay,
   onToggleRepeat,
   onToggleMute,
@@ -46,7 +52,7 @@ export function GuestPlayerPanel({
 
   return (
     <section className="panel flex flex-col gap-4 p-5" aria-label="Now playing" data-testid="player-panel">
-      <div className="crt relative min-h-[280px] flex-1 overflow-hidden rounded-[4px] border-[3px] border-cab-700 [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0">
+      <div className="crt relative min-h-[280px] flex-1 overflow-hidden rounded-[4px] border-[3px] border-cab-700">
         {nowPlaying && (
           <span
             data-testid="player-badge-live"
@@ -55,7 +61,23 @@ export function GuestPlayerPanel({
             LIVE
           </span>
         )}
-        <div ref={containerRef} data-testid="player-video" className="absolute inset-0" />
+        <div ref={containerRef} data-testid="player-video" className="absolute inset-0">
+          {nowPlaying && videoVisible && (
+            <video
+              ref={videoRef}
+              data-testid="player-stream-video"
+              key={nowPlaying.videoId}
+              className="h-full w-full"
+              src={`/api/stream/${nowPlaying.videoId}`}
+              autoPlay
+              muted={muted}
+              playsInline
+              preload="auto"
+              onLoadedMetadata={onLoadedMetadata}
+              onError={onVideoError}
+            />
+          )}
+        </div>
         {nowPlaying && videoVisible && (
           <button
             data-testid="player-btn-hide-video"

@@ -12,6 +12,11 @@ interface Props {
   muted: boolean;
   repeatOn: boolean;
   containerRef: RefObject<HTMLDivElement | null>;
+  videoRef: RefObject<HTMLVideoElement | null>;
+  onVideoPlay: () => void;
+  onVideoPause: () => void;
+  onVideoEnded: () => void;
+  onVideoError: () => void;
   onTogglePlay: () => void;
   onToggleRepeat: () => void;
   onSeek: (delta: number) => void;
@@ -27,6 +32,11 @@ export function HostPlayerPanel({
   muted,
   repeatOn,
   containerRef,
+  videoRef,
+  onVideoPlay,
+  onVideoPause,
+  onVideoEnded,
+  onVideoError,
   onTogglePlay,
   onToggleRepeat,
   onSeek,
@@ -44,11 +54,25 @@ export function HostPlayerPanel({
             LIVE
           </span>
         )}
-        <div
-          ref={containerRef}
-          data-testid="player-video"
-          className="absolute inset-0 flex items-center justify-center [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0"
-        />
+        <div ref={containerRef} className="absolute inset-0">
+          {nowPlaying && (
+            <video
+              ref={videoRef}
+              data-testid="player-video"
+              key={nowPlaying.videoId}
+              className="h-full w-full"
+              src={`/api/stream/${nowPlaying.videoId}`}
+              autoPlay
+              muted={muted}
+              playsInline
+              preload="auto"
+              onPlay={onVideoPlay}
+              onPause={onVideoPause}
+              onEnded={onVideoEnded}
+              onError={onVideoError}
+            />
+          )}
+        </div>
         {nowPlaying && (
           <button
             type="button"

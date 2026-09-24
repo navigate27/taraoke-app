@@ -49,6 +49,7 @@ import {
   resolveYouTubeUrl,
   searchYouTube,
 } from "./youtube";
+import { streamHandler } from "./stream";
 
 const PORT = Number(process.env.SERVER_PORT ?? 3001);
 const HOST = process.env.SERVER_HOST ?? "0.0.0.0";
@@ -74,6 +75,11 @@ app.get("/api/lan", async () => {
   }
   return { ip: null };
 });
+
+app.get<{ Params: { videoId: string } }>(
+  "/api/stream/:videoId",
+  streamHandler,
+);
 
 app.get<{ Querystring: { q?: string } }>("/api/search", async (req, reply) => {
   const q = (req.query.q ?? "").trim();

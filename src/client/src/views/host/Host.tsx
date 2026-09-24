@@ -12,12 +12,7 @@ import { RoomHeader } from "../../components/RoomHeader";
 import { SongsSearchModal } from "../../components/SongsSearchModal";
 import { normalizeTitle } from "../../../../shared/songTitle";
 import { socket } from "../../lib/socket";
-import {
-  formatClock,
-  loadYouTubeApi,
-  YTEvents,
-  type YTPlayer,
-} from "../../lib/youtube";
+import { formatClock } from "../../lib/formatClock";
 import { HostPlayerPanel } from "./HostPlayerPanel";
 import { HostQueuePanel } from "./HostQueuePanel";
 
@@ -63,17 +58,13 @@ export function Host({ code, token, nickname, onExit }: Props) {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const mutedRef = useRef(true);
-  const playerRef = useRef<YTPlayer | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const playingRef = useRef(false);
-  const readyRef = useRef(false);
-  const pendingVideoRef = useRef<string | null>(null);
+  const errorRetriedRef = useRef(false);
   const resumeRef = useRef<{ positionSec: number; playing: boolean } | null>(null);
   const repeatRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const stateRef = useRef<PublicRoomState | null>(null);
   const videoId = state?.nowPlaying?.videoId ?? null;
-
-  stateRef.current = state;
 
   function showToast(message: string) {
     setToast(message);
@@ -108,20 +99,20 @@ export function Host({ code, token, nickname, onExit }: Props) {
         repeatRef.current = action.on;
         setRepeatOn(action.on);
         if (action.on) {
-          const player = playerRef.current;
-          if (player && readyRef.current) {
-            player.seekTo(0, true);
-            player.playVideo();
+          const video = videoRef.current;
+          if (video) {
+            video.currentTime = 0;
+            video.play().catch(() => {});
           }
         }
         return;
       }
-      const player = playerRef.current;
-      if (!player || !readyRef.current) return;
-      if (action.type === "play") player.playVideo();
-      else if (action.type === "pause") player.pauseVideo();
-      else if (action.type === "seek") {
-        player.seekTo(Math.max(0, action.positionSec));
+      const video = videoRef.current;
+      if (!video) return;
+      if (action.type === "play") video.play().catch(() => {});
+      else if (action.type === "pause") video.pause();
+      else if (action.type === "seek" && video.readyState >= 1) {
+        video.currentTime = Math.max(0, action.positionSec);
       }
     };
     socket.on("roomState", onRoomState);
@@ -140,86 +131,54 @@ export function Host({ code, token, nickname, onExit }: Props) {
     };
   }, [code, token, nickname, onExit]);
 
-  useEffect(() => {
-    let cancelled = false;
-    let player: YTPlayer | null = null;
-    loadYouTubeApi().then((YT) => {
-      if (cancelled || !containerRef.current) return;
-      const el = document.createElement("div");
-      containerRef.current.appendChild(el);
-      player = new YT.Player(el, {
-        playerVars: {
-          rel: 0,
-          controls: 0,
-          disablekb: 1,
-          modestbranding: 1,
-          iv_load_policy: 3,
-          fs: 0,
-          playsinline: 1,
-          autoplay: 1,
-          mute: 1,
-          origin: window.location.origin,
-        },
-        events: {
-          onReady: () => {
-            readyRef.current = true;
-            if (pendingVideoRef.current) {
-              player?.loadVideoById(pendingVideoRef.current);
-              pendingVideoRef.current = null;
-            }
-          },
-          onStateChange: (e) => {
-            const isPlaying = e.data === YTEvents.PLAYING;
-            playingRef.current = isPlaying;
-            setPlaying(isPlaying);
-            if (e.data === YTEvents.ENDED) {
-              if (repeatRef.current) {
-                player?.seekTo(0, true);
-                player?.playVideo();
-              } else {
-                socket.emit("host:action", token, { type: "next" });
-              }
-            }
-          },
-        },
-      }) as YTPlayer;
-      playerRef.current = player;
-      pendingVideoRef.current = stateRef.current?.nowPlaying?.videoId ?? null;
-    });
-    return () => {
-      cancelled = true;
-      player?.destroy();
-      playerRef.current = null;
-      readyRef.current = false;
-      pendingVideoRef.current = null;
-      if (containerRef.current) containerRef.current.innerHTML = "";
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  function handleVideoPlay() {
+    playingRef.current = true;
+    setPlaying(true);
+  }
+
+  function handleVideoPause() {
+    playingRef.current = false;
+    setPlaying(false);
+  }
+
+  function handleVideoEnded() {
+    const video = videoRef.current;
+    if (repeatRef.current && video) {
+      video.currentTime = 0;
+      video.play().catch(() => {});
+    } else {
+      socket.emit("host:action", token, { type: "next" });
+    }
+  }
+
+  function handleVideoError() {
+    const video = videoRef.current;
+    if (!video || !video.src || errorRetriedRef.current) return;
+    errorRetriedRef.current = true;
+    video.src = `${video.src}${video.src.includes("?") ? "&" : "?"}r=${Date.now()}`;
+    video.play().catch(() => {});
+  }
 
   useEffect(() => {
-    if (!videoId) return;
-    if (playerRef.current && readyRef.current) {
-      playerRef.current.loadVideoById(videoId);
-    } else {
-      pendingVideoRef.current = videoId;
-    }
+    errorRetriedRef.current = false;
   }, [videoId]);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const player = playerRef.current;
-      if (!player?.getCurrentTime) return;
-      const position = player.getCurrentTime() || 0;
-      const duration = player.getDuration() || 0;
+      const video = videoRef.current;
+      if (!video) return;
+      const position = video.currentTime || 0;
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
       setRemaining(formatClock(duration - position));
       setProgress(duration ? Math.min(1, position / duration) : 0);
       if (resumeRef.current) {
         if (!playingRef.current) return;
         const resume = resumeRef.current;
         resumeRef.current = null;
-        if (resume.positionSec > 0) player.seekTo(resume.positionSec, true);
-        if (!resume.playing) player.pauseVideo();
+        if (resume.positionSec > 0 && video.readyState >= 1) {
+          video.currentTime = resume.positionSec;
+        }
+        if (!resume.playing) video.pause();
         return;
       }
       socket.emit("player:state", token, {
@@ -234,10 +193,10 @@ export function Host({ code, token, nickname, onExit }: Props) {
   }, [token, state?.nowPlaying?.videoId]);
 
   function togglePlay() {
-    const player = playerRef.current;
-    if (!player) return;
-    if (playingRef.current) player.pauseVideo();
-    else player.playVideo();
+    const video = videoRef.current;
+    if (!video) return;
+    if (playingRef.current) video.pause();
+    else video.play().catch(() => {});
   }
 
   function toggleRepeat() {
@@ -245,33 +204,26 @@ export function Host({ code, token, nickname, onExit }: Props) {
     repeatRef.current = next;
     setRepeatOn(next);
     if (next) {
-      const player = playerRef.current;
-      if (player && readyRef.current) {
-        player.seekTo(0, true);
-        player.playVideo();
+      const video = videoRef.current;
+      if (video) {
+        video.currentTime = 0;
+        video.play().catch(() => {});
       }
     }
   }
 
   function seekBy(delta: number) {
-    const player = playerRef.current;
-    if (!player) return;
-    const current = player.getCurrentTime() || 0;
-    player.seekTo(Math.max(0, current + delta));
+    const video = videoRef.current;
+    if (!video || video.readyState < 1) return;
+    video.currentTime = Math.max(0, video.currentTime + delta);
   }
 
   function toggleMute() {
-    const player = playerRef.current;
-    if (!player) return;
-    if (mutedRef.current) {
-      player.unMute();
-      mutedRef.current = false;
-      setMuted(false);
-    } else {
-      player.mute();
-      mutedRef.current = true;
-      setMuted(true);
-    }
+    const video = videoRef.current;
+    if (!video) return;
+    mutedRef.current = !mutedRef.current;
+    video.muted = mutedRef.current;
+    setMuted(mutedRef.current);
   }
 
   function addToQueue(result: SearchResult) {
@@ -333,6 +285,11 @@ export function Host({ code, token, nickname, onExit }: Props) {
           muted={muted}
           repeatOn={repeatOn}
           containerRef={containerRef}
+          videoRef={videoRef}
+          onVideoPlay={handleVideoPlay}
+          onVideoPause={handleVideoPause}
+          onVideoEnded={handleVideoEnded}
+          onVideoError={handleVideoError}
           onTogglePlay={togglePlay}
           onToggleRepeat={toggleRepeat}
           onSeek={seekBy}
