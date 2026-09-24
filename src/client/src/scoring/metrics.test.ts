@@ -71,6 +71,17 @@ describe("PerformanceMetrics", () => {
     expect(s.energy).toBeLessThan(full.snapshot().energy);
   });
 
+  it("non-positive hz on voiced frames is skipped for pitch stats (no NaN poisoning)", () => {
+    const m = new PerformanceMetrics({ windowSec });
+    m.process(frame({ hz: 0 }));
+    m.process(frame({ hz: -10 }));
+    feed(m, 200, () => frame({ hz: 220 }));
+    const s = m.snapshot();
+    expect(Number.isFinite(s.steadiness)).toBe(true);
+    expect(s.steadiness).toBeGreaterThanOrEqual(0);
+    expect(s.steadiness).toBeLessThanOrEqual(1);
+  });
+
   it("state stays bounded over long sessions", () => {
     const m = new PerformanceMetrics({ windowSec });
     feed(m, 10_000, (i) => frame({ hz: 440 + (i % 50) }));

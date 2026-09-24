@@ -82,7 +82,7 @@ export class PerformanceMetrics {
       this.voiced++;
       this.streak++;
       if (this.streak > this.longestStreak) this.longestStreak = this.streak;
-      if (frame.hz !== null) {
+      if (frame.hz !== null && frame.hz > 0) {
         const cents = 1200 * Math.log2(frame.hz / 220); // offset cancels in variance
         this.centsX += cents;
         this.centsX2 += cents * cents;
