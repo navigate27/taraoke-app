@@ -88,6 +88,10 @@ export function ScoreLab() {
   async function startMic() {
     setStarting(true);
     try {
+      // A retry after a denied/failed session must release the prior scorer
+      // (mic tracks, worker, AudioContext) before replacing it.
+      scorerRef.current?.stop();
+      scorerRef.current = null;
       const scorer = new VoiceScorer();
       scorer.onStatus = setStatus;
       scorer.onFrame = handleFrame;
@@ -270,13 +274,13 @@ export function ScoreLab() {
               label="Voicing confidence"
               value={lastFrame ? `${Math.round(lastFrame.confidence * 100)}%` : "—"}
               fraction={lastFrame?.confidence ?? 0}
-              color="#3EF0FF"
+              color="var(--cyan-500)"
             />
             <Meter
               label="Energy"
               value={lastFrame ? `${Math.round(lastFrame.energy * 100)}%` : "—"}
               fraction={lastFrame?.energy ?? 0}
-              color="#FFD23E"
+              color="var(--gold-500)"
             />
             <div className="flex items-baseline justify-between gap-2 sm:col-span-2">
               <span className="text-xs text-arc-500">Current pitch</span>
