@@ -9,10 +9,38 @@ interface Props {
   addedVideoIds: Set<string>;
 }
 
+interface TrendingResponse {
+  results?: SearchResult[];
+  artists?: string[];
+}
+
 export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [trending, setTrending] = useState<{
+    results: SearchResult[];
+    artists: string[];
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/suggestions")
+      .then((res) => (res.ok ? res.json() : { results: [] }))
+      .then((body: TrendingResponse) => {
+        if (cancelled) return;
+        setTrending({
+          results: body.results ?? [],
+          artists: body.artists ?? [],
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setTrending({ results: [], artists: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -58,13 +86,13 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
           </button>
         </div>
 
-        <div className="relative mt-3 mb-3">
+        <div className="relative mt-3 mb-1.5">
           <input
             data-testid="search-input"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search or paste a YouTube link"
+            placeholder="Search songs"
             aria-label="Search songs to add"
             className="crt w-full rounded-[4px] border-[3px] border-cab-700 pr-9 pl-3 py-2.5 text-sm text-arc-100 outline-none placeholder:text-arc-500 focus:border-cyan-500"
           />
@@ -90,13 +118,79 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
             </p>
           )}
           {!query && !searching && (
-            <p data-testid="search-empty" className="text-sm text-arc-500">
-              Search a song or paste a YouTube link.
-            </p>
+            <div>
+              {trending === null && (
+                <p className="mb-3 text-sm text-arc-500">Loading picks…</p>
+              )}
+              {trending && trending.results.length === 0 && (
+                <p
+                  data-testid="search-empty"
+                  className="pb-4 text-sm text-arc-500"
+                >
+                  Search a song.
+                </p>
+              )}
+              {trending && trending.artists.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {trending.artists.map((artist) => (
+                    <button
+                      key={artist}
+                      type="button"
+                      onClick={() => setQuery(artist)}
+                      aria-label={`Search songs by ${artist}`}
+                      className="btn btn-ghost h-8 px-2.5 text-[10px] text-arc-100"
+                    >
+                      {artist}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {trending && trending.results.length > 0 && (
+                <p className="mb-2 font-press text-[9px] tracking-[0.2em] text-gold-500">
+                  Trending picks
+                </p>
+              )}
+              {trending?.results.map((result) => {
+                const added = addedVideoIds.has(result.videoId);
+                return (
+                  <div
+                    key={result.videoId}
+                    data-testid={`search-row-${result.videoId}`}
+                    className="mb-2.5 grid grid-cols-[72px_1fr_auto] items-center gap-2.5 rounded-[4px] border-2 border-cab-700 bg-cab-800 p-2"
+                  >
+                    <img
+                      src={result.thumbnail}
+                      alt=""
+                      className="aspect-video w-[72px] rounded-[4px] border-2 border-cab-700 object-cover"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold">{result.title}</p>
+                      <p className="text-[11px] text-arc-500">{result.channel}</p>
+                    </div>
+                    {added ? (
+                      <Check
+                        role="img"
+                        aria-label="Added"
+                        className="h-4 w-4 text-cyan-500"
+                      />
+                    ) : (
+                      <button
+                        data-testid={`search-btn-add-${result.videoId}`}
+                        onClick={() => onAdd(result)}
+                        className="btn btn-primary px-2.5 py-2.5 text-[8px]"
+                        aria-label={`Add ${result.title} to queue`}
+                      >
+                        Add
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
           {query && !searching && results.length === 0 && (
             <p data-testid="search-no-results" className="text-sm text-arc-500">
-              No results — paste a YouTube link instead.
+              No results — try another search.
             </p>
           )}
           {results.map((result) => {

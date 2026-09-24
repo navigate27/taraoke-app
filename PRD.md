@@ -70,6 +70,9 @@ default) and can control playback only for songs they added.
   2. **Paste a YouTube URL** — always-available fallback if search quota is exhausted.
 - Search UX: one search box, filter chips (e.g., OPM, Pop, Rock, 2000s) are nice-to-have;
   results are karaoke-version videos (lyrics on screen baked into the video).
+- **Blank-state picks:** with an empty search box, the modal shows trending picks —
+  currently trending PH tracks resolved to karaoke versions — plus artist chips;
+  tapping a chip fills the search box with that artist.
 - Guest taps a result → **Add to queue** (optional: "queue for after current song").
 
 ### 5.4 Queue system
@@ -77,6 +80,7 @@ default) and can control playback only for songs they added.
 - Single shared FIFO queue. Anyone can add; **host controls it**:
   - Play / pause / skip current song.
   - Reorder, remove, or clear queue items.
+  - The queue holds up to **50** songs; further adds are rejected with an error.
 - Queue item states: `queued → playing → done` (and `skipped`).
 - Queue panel is organized top-to-bottom: **Now playing**, then a tabbed section
   with two nav tabs — **Next** (the FIFO queue, with its item count) and **Played**
@@ -84,7 +88,8 @@ default) and can control playback only for songs they added.
   **Suggestions** section: karaoke videos seeded from the current song or the most
   recent queued/played song (falling back to OPM staples when the room is fresh).
   Suggestions come from the server's YouTube proxy with a per-seed cache to conserve
-  quota; songs already queued are hidden from the list.
+  quota; songs already queued are hidden from the list, and the list refills by
+  paginating further YouTube results (page tokens) until it runs out.
 - Each item shows: thumbnail, title, added-by nickname (as a participant chip), duration.
 - Removing a queued item asks the host to confirm. Played songs can be queued again
   (button on each played row; shows "Added" instead when the song is already queued).

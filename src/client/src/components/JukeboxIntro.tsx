@@ -23,7 +23,7 @@ export function JukeboxIntro({ onCoinInserted }: Props) {
         <motion.g
           initial={{ y: 0 }}
           animate={{ y: [0, 3, 0, 1.5, 0] }}
-          transition={{ delay: 0.72, duration: 0.35, times: [0, 0.3, 0.55, 0.8, 1] }}
+          transition={{ delay: 0.6, duration: 0.35, times: [0, 0.3, 0.55, 0.8, 1] }}
         >
           {/* base + feet */}
           <rect x="6" y="158" width="108" height="8" fill="#2e2150" />
@@ -72,25 +72,25 @@ export function JukeboxIntro({ onCoinInserted }: Props) {
             strokeWidth="6"
             initial={{ opacity: 0.35 }}
             animate={{ opacity: [0.35, 1, 0.7] }}
-            transition={{ delay: 0.78, duration: 0.6, times: [0, 0.4, 1] }}
+            transition={{ delay: 0.66, duration: 0.6, times: [0, 0.4, 1] }}
             style={{ filter: "drop-shadow(0 0 6px rgba(228,59,255,.9))" }}
           />
         </motion.g>
-        {/* coin: tossed in from the top right, arcs into the slot, squashes and bounces */}
+        {/* coin: slides straight in from the right into the slot, squashes and bounces */}
         <motion.g
-          initial={{ x: 110, y: -150, opacity: 0 }}
+          initial={{ x: 110, y: 0, opacity: 0 }}
           animate={{
-            x: [110, 55, 0, 0, 0],
-            y: [-150, -115, 0, -10, 0],
-            opacity: [0, 1, 1, 1, 1],
-            rotate: [-170, -60, 0, 0, 0],
-            scaleX: [1, 1, 1.18, 0.92, 1],
-            scaleY: [1, 1, 0.85, 1.06, 1],
+            x: [110, 0, 0, 0],
+            y: [0, 0, -10, 0],
+            opacity: [0, 1, 1, 1],
+            rotate: [-170, 0, 0, 0],
+            scaleX: [1, 1.18, 0.95, 1],
+            scaleY: [1, 0.85, 1.05, 1],
           }}
           transition={{
             duration: 1.15,
-            times: [0, 0.45, 0.68, 0.85, 1],
-            ease: ["easeOut", "easeIn", "easeOut", "easeIn"],
+            times: [0, 0.55, 0.8, 1],
+            ease: ["linear", "easeOut", "easeIn"],
           }}
           onAnimationComplete={onCoinInserted}
         >

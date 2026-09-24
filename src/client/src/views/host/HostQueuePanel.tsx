@@ -53,10 +53,17 @@ export function HostQueuePanel({
   } | null>(null);
   const ghostRef = useRef<HTMLElement | null>(null);
   const queueRef = useRef<QueueItem[]>([]);
+  const autoScrollRef = useRef<{
+    lastY: number;
+    raf: number;
+  } | null>(null);
 
   queueRef.current = queue;
 
   useEffect(() => {
+    const EDGE_PX = 48;
+    const MAX_SPEED = 14;
+
     function rowAt(clientY: number): HTMLElement | null {
       const rows = [
         ...document.querySelectorAll<HTMLElement>(
@@ -68,6 +75,45 @@ export function HostQueuePanel({
         if (clientY >= rect.top && clientY <= rect.bottom) return row;
       }
       return null;
+    }
+
+    function startAutoScroll(clientY: number) {
+      if (autoScrollRef.current) return;
+      const el = document.querySelector<HTMLElement>(
+        '[aria-label="Song queue"] [data-queue-scroll]',
+      );
+      if (!el) return;
+      const state = { lastY: clientY, raf: 0 };
+      autoScrollRef.current = state;
+      const tick = () => {
+        const rect = el.getBoundingClientRect();
+        let speed = 0;
+        if (state.lastY < rect.top + EDGE_PX) {
+          speed = -Math.ceil(
+            MAX_SPEED * ((rect.top + EDGE_PX - state.lastY) / EDGE_PX),
+          );
+        } else if (state.lastY > rect.bottom - EDGE_PX) {
+          speed = Math.ceil(
+            MAX_SPEED * ((state.lastY - (rect.bottom - EDGE_PX)) / EDGE_PX),
+          );
+        }
+        if (speed !== 0) {
+          el.scrollTop += speed;
+          const over = rowAt(state.lastY);
+          setDragOverIndex(
+            over ? [...(over.parentNode?.childNodes ?? [])].indexOf(over) : null,
+          );
+        }
+        state.raf = requestAnimationFrame(tick);
+      };
+      state.raf = requestAnimationFrame(tick);
+    }
+
+    function stopAutoScroll() {
+      const state = autoScrollRef.current;
+      if (!state) return;
+      cancelAnimationFrame(state.raf);
+      autoScrollRef.current = null;
     }
 
     function onPointerMove(e: PointerEvent) {
@@ -99,10 +145,13 @@ export function HostQueuePanel({
         document.body.appendChild(ghost);
         ghostRef.current = ghost;
         setDraggingIndex(pending.index);
+        startAutoScroll(e.clientY);
         return;
       }
       ghost.style.left = `${e.clientX - pending.offsetX}px`;
       ghost.style.top = `${e.clientY - pending.offsetY}px`;
+      if (autoScrollRef.current) autoScrollRef.current.lastY = e.clientY;
+      else startAutoScroll(e.clientY);
       const over = rowAt(e.clientY);
       setDragOverIndex(over ? [...(over.parentNode?.childNodes ?? [])].indexOf(over) : null);
     }
@@ -111,6 +160,7 @@ export function HostQueuePanel({
       const pending = pendingDragRef.current;
       const ghost = ghostRef.current;
       pendingDragRef.current = null;
+      stopAutoScroll();
       if (!ghost) return;
       ghost.remove();
       ghostRef.current = null;
@@ -139,6 +189,8 @@ export function HostQueuePanel({
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      if (autoScrollRef.current) cancelAnimationFrame(autoScrollRef.current.raf);
+      autoScrollRef.current = null;
     };
   }, [token]);
 
@@ -152,7 +204,7 @@ export function HostQueuePanel({
       </h2>
       <p
         data-testid="queue-subheading"
-        className="mt-1 mb-3 font-press text-[8px] tracking-[0.2em] text-gold-500"
+        className="mt-1 mb-3 font-press text-[9px] tracking-[0.2em] text-gold-500"
       >
         — Today's high scores —
       </p>
@@ -165,12 +217,12 @@ export function HostQueuePanel({
         + Add song
       </button>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="flex min-h-0 flex-1 flex-col">
         {nowPlaying && (
           <>
             <p
               data-testid="queue-now-label"
-              className="mt-1 mb-2 font-press text-[8px] tracking-[0.2em] text-neon-500"
+              className="mt-1 mb-2 font-press text-[9px] tracking-[0.2em] text-neon-500"
             >
               Now playing
             </p>
@@ -225,6 +277,8 @@ export function HostQueuePanel({
             Played
           </button>
         </div>
+        <div className="scroll-thin mb-3 max-h-[360px] overflow-y-auto pr-1"
+        data-queue-scroll>
         {tab === "next" && queue.length === 0 && (
           <p data-testid="queue-empty" className="mb-3 text-sm text-arc-500">
             Queue is empty.
@@ -373,14 +427,17 @@ export function HostQueuePanel({
             ))}
           </>
         )}
-        <SongSuggestions
-          seedCandidates={[nowPlaying, ...queue, ...history]
-            .filter((i): i is QueueItem => !!i)
-            .map((i) => ({ title: i.title, channel: i.channel }))}
-          addedVideoIds={addedVideoIds}
-          addedTitles={addedTitles}
-          onAdd={onSuggestionAdd}
-        />
+        </div>
+        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto pr-1">
+          <SongSuggestions
+            seedCandidates={[nowPlaying, ...queue, ...history]
+              .filter((i): i is QueueItem => !!i)
+              .map((i) => ({ title: i.title, channel: i.channel }))}
+            addedVideoIds={addedVideoIds}
+            addedTitles={addedTitles}
+            onAdd={onSuggestionAdd}
+          />
+        </div>
       </div>
 
       {removeItem && (

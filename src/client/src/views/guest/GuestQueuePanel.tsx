@@ -39,7 +39,7 @@ export function GuestQueuePanel({
       </h2>
       <p
         data-testid="queue-subheading"
-        className="mt-1 mb-3 font-press text-[8px] tracking-[0.2em] text-gold-500"
+        className="mt-1 mb-3 font-press text-[9px] tracking-[0.2em] text-gold-500"
       >
         — Today's high scores —
       </p>
@@ -52,12 +52,12 @@ export function GuestQueuePanel({
         + Add song
       </button>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="flex min-h-0 flex-1 flex-col">
         {nowPlaying && (
           <>
             <p
               data-testid="queue-now-label"
-              className="mt-1 mb-2 font-press text-[8px] tracking-[0.2em] text-neon-500"
+              className="mt-1 mb-2 font-press text-[9px] tracking-[0.2em] text-neon-500"
             >
               Now playing
             </p>
@@ -112,6 +112,7 @@ export function GuestQueuePanel({
             Played
           </button>
         </div>
+        <div className="scroll-thin mb-3 max-h-[360px] overflow-y-auto pr-1">
         {tab === "next" && queue.length === 0 && (
           <p data-testid="queue-empty" className="mb-3 text-sm text-arc-500">
             Queue is empty.
@@ -185,14 +186,17 @@ export function GuestQueuePanel({
             ))}
           </>
         )}
-        <SongSuggestions
-          seedCandidates={[nowPlaying, ...queue, ...history]
-            .filter((i): i is QueueItem => !!i)
-            .map((i) => ({ title: i.title, channel: i.channel }))}
-          addedVideoIds={addedVideoIds}
-          addedTitles={addedTitles}
-          onAdd={onSuggestionAdd}
-        />
+        </div>
+        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto pr-1">
+          <SongSuggestions
+            seedCandidates={[nowPlaying, ...queue, ...history]
+              .filter((i): i is QueueItem => !!i)
+              .map((i) => ({ title: i.title, channel: i.channel }))}
+            addedVideoIds={addedVideoIds}
+            addedTitles={addedTitles}
+            onAdd={onSuggestionAdd}
+          />
+        </div>
       </div>
     </section>
   );

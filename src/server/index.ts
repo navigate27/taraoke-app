@@ -32,17 +32,20 @@ import {
   removeParticipant,
   sweepRooms,
   touchRoom,
+  MAX_QUEUE_SIZE,
 } from "./rooms";
 import {
   SIMILAR_PAGE,
   cleanArtist,
   getSimilarTracks,
+  getTopTracksChart,
   resolveKaraokeVersions,
   resolveSimilarTracks,
 } from "./lastfm";
 import {
   getTrendingVideos,
   karaokeOnly,
+  NON_SONG_RE,
   resolveYouTubeUrl,
   searchYouTube,
 } from "./youtube";
@@ -126,16 +129,47 @@ app.get<{
   }
 
   if (!seed) {
+    const chart = await getTopTracksChart();
+    if (chart.length > 0) {
+      const idx = page.startsWith("s:") ? Number(page.slice(2)) || 0 : 0;
+      const slice = chart.slice(idx, idx + SIMILAR_PAGE);
+      const results = await resolveSimilarTracks(slice);
+      if (results.length > 0) {
+        return reply.send({
+          results,
+          artists: [...new Set(slice.map((t) => t.artist).filter(Boolean))],
+          nextPageToken:
+            idx + SIMILAR_PAGE < chart.length
+              ? `s:${idx + SIMILAR_PAGE}`
+              : null,
+          mode: "trending",
+        });
+      }
+    }
     const trending = await getTrendingVideos(
       "PH",
       page.startsWith("y:") ? page.slice(2) : undefined,
     );
     if (trending.results.length > 0) {
-      const results = await resolveKaraokeVersions(
+      const resolved = await resolveKaraokeVersions(
         trending.results.slice(0, 6),
       );
+      const results =
+        resolved.length > 0
+          ? resolved
+          : trending.results
+              .filter((r) => !NON_SONG_RE.test(r.title))
+              .slice(0, 6);
       return reply.send({
         results,
+        artists: [
+          ...new Set(
+            trending.results
+              .slice(0, 6)
+              .map((r) => cleanArtist(r.channel))
+              .filter(Boolean),
+          ),
+        ],
         nextPageToken: trending.nextPageToken
           ? `y:${trending.nextPageToken}`
           : null,
@@ -263,6 +297,10 @@ io.on("connection", (socket) => {
     const room = getRoom(code);
     if (!room) {
       callback({ ok: false, error: "Room closed" });
+      return;
+    }
+    if (room.queue.length >= MAX_QUEUE_SIZE) {
+      callback({ ok: false, error: "Queue is full — 50 songs max" });
       return;
     }
     const queueItem: QueueItem = {

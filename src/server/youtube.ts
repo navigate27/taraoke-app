@@ -97,7 +97,7 @@ export async function searchYouTube(
 const KARAOKE_RE =
   /\b(karaoke|videoke|instrumental|minus\s?one|min-one|backing\s?track|playback)\b/i;
 
-const NON_SONG_RE =
+export const NON_SONG_RE =
   /\b(mashup|medley|megamix|non-?stop|compilation|mixtape)\b/i;
 
 export function pickKaraokeResult(

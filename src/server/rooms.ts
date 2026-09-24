@@ -9,6 +9,8 @@ import type {
 const ROOM_IDLE_MS = 3 * 60 * 60 * 1000;
 const PARTICIPANT_TIMEOUT_MS = 60 * 1000;
 
+export const MAX_QUEUE_SIZE = 50;
+
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 const rooms = new Map<string, Room>();

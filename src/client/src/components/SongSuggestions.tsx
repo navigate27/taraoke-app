@@ -40,6 +40,7 @@ export function SongSuggestions({
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [revealed, setRevealed] = useState(false);
   const pagesFetched = useRef(0);
   const inFlightRef = useRef(false);
   const queryRef = useRef("");
@@ -71,6 +72,7 @@ export function SongSuggestions({
     setPool([]);
     setNextPageToken(null);
     setLoading(true);
+    setRevealed(false);
     pagesFetched.current = 1;
     inFlightRef.current = true;
     fetch(`/api/suggestions?seed=${encodeURIComponent(query)}${artistParam}`)
@@ -136,7 +138,18 @@ export function SongSuggestions({
 
   const visible = pool.filter((r) => !isAdded(r)).slice(0, SHOW_COUNT);
 
-  if (!loading && visible.length === 0) return null;
+  const canFetchMore = !!nextPageToken && pagesFetched.current < MAX_PAGES;
+
+  useEffect(() => {
+    if (revealed || loading) return;
+    if (unaddedCount >= SHOW_COUNT || !canFetchMore) {
+      setRevealed(true);
+    }
+  }, [revealed, loading, unaddedCount, canFetchMore]);
+
+  if (!revealed && !loading && visible.length === 0 && !canFetchMore) {
+    return null;
+  }
 
   return (
     <section aria-label="Song suggestions" className="mt-6">
@@ -158,7 +171,8 @@ export function SongSuggestions({
         )}
       </div>
       {loading && <p className="mb-3 text-sm text-arc-500">Looking for songs…</p>}
-      {visible.map((r) => (
+      {revealed &&
+        visible.map((r) => (
         <div
           key={r.videoId}
           className="mb-2.5 grid grid-cols-[64px_1fr_auto] items-center gap-3 rounded-[4px] border-[3px] border-cab-700 bg-cab-800 p-2"

@@ -10,6 +10,7 @@ export interface SimilarTrack {
 export const SIMILAR_PAGE = 6;
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const NULL_TTL_MS = 10 * 60 * 1000;
 const similarCache = new Map<string, { expires: number; data: SimilarTrack[] }>();
 const resolvedCache = new Map<
   string,
@@ -84,6 +85,50 @@ export function cleanTrackTitle(raw: string): string {
     .trim();
 }
 
+interface LastfmChartResponse {
+  tracks?: {
+    track?: {
+      name?: string;
+      artist?: { name?: string } | string;
+    }[];
+  };
+}
+
+export async function getTopTracksChart(
+  country = "philippines",
+): Promise<SimilarTrack[]> {
+  const key = process.env.LASTFM_API_KEY;
+  if (!key) return [];
+  const cacheKey = `#chart:${country}`;
+  const cached = similarCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return cached.data;
+  const url = new URL("https://ws.audioscrobbler.com/2.0/");
+  url.searchParams.set("method", "geo.gettoptracks");
+  url.searchParams.set("country", country);
+  url.searchParams.set("limit", "50");
+  url.searchParams.set("api_key", key);
+  url.searchParams.set("format", "json");
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const body = (await res.json()) as LastfmChartResponse;
+    const tracks: SimilarTrack[] = (body.tracks?.track ?? [])
+      .filter((t) => t.name)
+      .map((t) => ({
+        title: t.name ?? "",
+        artist:
+          typeof t.artist === "string" ? t.artist : (t.artist?.name ?? ""),
+      }));
+    similarCache.set(cacheKey, {
+      expires: Date.now() + CACHE_TTL_MS,
+      data: tracks,
+    });
+    return tracks;
+  } catch {
+    return [];
+  }
+}
+
 export async function resolveKaraokeVersions(
   seeds: SearchResult[],
 ): Promise<SearchResult[]> {
@@ -96,7 +141,7 @@ export async function resolveKaraokeVersions(
       const { results } = await searchYouTube(query);
       const pick = pickKaraokeResult(results);
       resolvedCache.set(query.toLowerCase(), {
-        expires: Date.now() + CACHE_TTL_MS,
+        expires: Date.now() + (pick ? CACHE_TTL_MS : NULL_TTL_MS),
         data: pick,
       });
       return pick;
@@ -138,7 +183,7 @@ async function resolveTrack(track: SimilarTrack): Promise<SearchResult | null> {
   const { results } = await searchYouTube(query);
   const pick = pickKaraokeResult(results);
   resolvedCache.set(query.toLowerCase(), {
-    expires: Date.now() + CACHE_TTL_MS,
+    expires: Date.now() + (pick ? CACHE_TTL_MS : NULL_TTL_MS),
     data: pick,
   });
   return pick;
