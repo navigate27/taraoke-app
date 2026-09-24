@@ -13,6 +13,9 @@ let analyzer: { processWindow(w: Float32Array): FrameAnalysis | null; reset(): v
   null;
 let buf = new Float32Array(CREPE_WINDOW);
 let bufLen = 0;
+// Cap pre-init buffering (64 windows): if model init stalls or fails, incoming
+// PCM must not grow the buffer unboundedly — drop the oldest data instead.
+const MAX_PREINIT_SAMPLES = 64 * CREPE_WINDOW;
 
 function drain(): void {
   if (!analyzer) return;
@@ -38,6 +41,15 @@ self.onmessage = async (ev: MessageEvent<In>) => {
     return;
   }
   if (msg.type === "pcm") {
+    if (!analyzer) {
+      // Pre-init: enforce the buffer cap by dropping the oldest samples.
+      const overflow = bufLen + msg.pcm.length - MAX_PREINIT_SAMPLES;
+      if (overflow > 0) {
+        const drop = Math.min(overflow, bufLen);
+        buf.copyWithin(0, drop, bufLen);
+        bufLen -= drop;
+      }
+    }
     if (bufLen + msg.pcm.length > buf.length) {
       const grown = new Float32Array(Math.max(bufLen + msg.pcm.length, buf.length * 2));
       grown.set(buf.subarray(0, bufLen));
