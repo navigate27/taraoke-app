@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   GuestAction,
   PlayerState,
@@ -10,6 +10,8 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { JoinPanel } from "../../components/JoinPanel";
 import { RoomHeader } from "../../components/RoomHeader";
 import { SongsSearchModal } from "../../components/SongsSearchModal";
+import type { RevealState } from "./HostPlayerPanel";
+import { randomScore } from "../../components/ScoreReveal";
 import { normalizeTitle } from "../../../../shared/songTitle";
 import { socket } from "../../lib/socket";
 import { formatClock } from "../../lib/formatClock";
@@ -55,6 +57,7 @@ export function Host({ code, token, nickname, onExit }: Props) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [muted, setMuted] = useState(true);
   const [repeatOn, setRepeatOn] = useState(false);
+  const [reveal, setReveal] = useState<RevealState | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   const mutedRef = useRef(true);
@@ -164,10 +167,16 @@ export function Host({ code, token, nickname, onExit }: Props) {
     if (repeatRef.current && video) {
       video.currentTime = 0;
       video.play().catch(() => {});
-    } else {
-      socket.emit("host:action", token, { type: "next" });
+      return;
     }
+    const nowPlaying = state?.nowPlaying;
+    if (nowPlaying) {
+      setReveal({ score: randomScore(), nickname: nowPlaying.addedBy });
+    }
+    socket.emit("host:action", token, { type: "next" });
   }
+
+  const dismissReveal = useCallback(() => setReveal(null), []);
 
   function handleVideoError() {
     const video = videoRef.current;
@@ -304,6 +313,8 @@ export function Host({ code, token, nickname, onExit }: Props) {
           repeatOn={repeatOn}
           containerRef={containerRef}
           videoRef={videoRef}
+          reveal={reveal}
+          onDismissReveal={dismissReveal}
           onVideoPlay={handleVideoPlay}
           onVideoPause={handleVideoPause}
           onVideoEnded={handleVideoEnded}

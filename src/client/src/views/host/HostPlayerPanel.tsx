@@ -3,6 +3,12 @@ import { Play } from "pixelarticons/react";
 import type { QueueItem } from "../../../../shared/types";
 import { ParticipantChip } from "../../components/ParticipantChip";
 import { PlayerControls } from "../../components/PlayerControls";
+import { ScoreReveal } from "../../components/ScoreReveal";
+
+export interface RevealState {
+  score: number;
+  nickname: string;
+}
 
 interface Props {
   nowPlaying: QueueItem | null;
@@ -13,6 +19,8 @@ interface Props {
   repeatOn: boolean;
   containerRef: RefObject<HTMLDivElement | null>;
   videoRef: RefObject<HTMLVideoElement | null>;
+  reveal: RevealState | null;
+  onDismissReveal: () => void;
   onVideoPlay: () => void;
   onVideoPause: () => void;
   onVideoEnded: () => void;
@@ -33,6 +41,8 @@ export function HostPlayerPanel({
   repeatOn,
   containerRef,
   videoRef,
+  reveal,
+  onDismissReveal,
   onVideoPlay,
   onVideoPause,
   onVideoEnded,
@@ -82,7 +92,7 @@ export function HostPlayerPanel({
             className="absolute inset-0 z-[5] cursor-pointer"
           />
         )}
-        {nowPlaying && !playing && (
+        {nowPlaying && !playing && !reveal && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center [&>button]:pointer-events-auto">
             <button
               data-testid="player-btn-resume"
@@ -93,6 +103,13 @@ export function HostPlayerPanel({
               <Play className="h-5 w-5" />
             </button>
           </div>
+        )}
+        {reveal && (
+          <ScoreReveal
+            score={reveal.score}
+            nickname={reveal.nickname}
+            onDismiss={onDismissReveal}
+          />
         )}
         {!nowPlaying && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-cab-900">
