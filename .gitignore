@@ -5,6 +5,7 @@ dist/
 !.env.example
 *.local
 .superpowers/
+docs/superpowers/
 .playwright-mcp/
 .claude/
 *.tsbuildinfo
