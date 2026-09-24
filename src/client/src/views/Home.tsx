@@ -83,7 +83,7 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
         <p className="mt-3 text-arc-500">Instant karaoke rooms. No account needed.</p>
       </header>
 
-      <section className="crt scanlines panel w-full max-w-sm p-6">
+      <section className="crt panel w-full max-w-sm p-6">
         <div className="mb-5 grid grid-cols-2 gap-2.5" role="tablist" aria-label="Host or join a room">
           <button
             role="tab"

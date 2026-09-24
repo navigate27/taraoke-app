@@ -31,8 +31,6 @@ interface Props {
   onNext: () => void;
 }
 
-const GLOW = "[text-shadow:0_0_8px_rgba(62,240,255,.7)]";
-
 export function PlayerControls({
   playing,
   muted,
@@ -71,7 +69,7 @@ export function PlayerControls({
         aria-label="Repeat this song"
         title="Repeat this song"
         className={`btn btn-ghost h-14 w-14 p-0 text-[12px] disabled:opacity-30 ${
-          repeatOn ? `text-cyan-500 ${GLOW}` : "text-arc-100"
+          repeatOn ? `text-cyan-500` : "text-arc-100"
         }`}
       >
         <Repeat1 className="h-5 w-5" />
@@ -90,7 +88,7 @@ export function PlayerControls({
         aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
         title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
         className={`btn btn-ghost h-14 w-14 p-0 disabled:opacity-30 ${
-          isFullscreen ? `text-cyan-500 ${GLOW}` : "text-arc-100"
+          isFullscreen ? `text-cyan-500` : "text-arc-100"
         }`}
       >
         <IconFullscreen className="h-5 w-5" />
@@ -117,7 +115,7 @@ export function PlayerControls({
         title={muted ? "Sound off — click to unmute" : "Sound on — click to mute"}
         aria-label={muted ? "Unmute" : "Mute"}
         className={`btn btn-ghost hidden h-14 w-14 p-0 disabled:opacity-30 lg:block ${
-          muted ? "text-arc-500 opacity-70" : `text-cyan-500 ${GLOW}`
+          muted ? "text-arc-500 opacity-70" : `text-cyan-500`
         }`}
       >
         {muted ? <VolumeX className="h-5 w-5" /> : <IconSoundOn className="h-5 w-5" />}
@@ -139,7 +137,7 @@ export function PlayerControls({
           aria-label="More options"
           title="More options"
           className={`btn btn-ghost h-14 w-14 p-0 disabled:opacity-30 ${
-            moreOpen ? `text-cyan-500 ${GLOW}` : "text-arc-100"
+            moreOpen ? `text-cyan-500` : "text-arc-100"
           }`}
         >
           <MoreHorizontal className="h-5 w-5" />
@@ -175,7 +173,7 @@ export function PlayerControls({
               title={muted ? "Sound off — click to unmute" : "Sound on — click to mute"}
               aria-label={muted ? "Unmute" : "Mute"}
               className={`btn btn-ghost h-12 w-12 p-0 disabled:opacity-30 ${
-                muted ? "text-arc-500 opacity-70" : `text-cyan-500 ${GLOW}`
+                muted ? "text-arc-500 opacity-70" : `text-cyan-500`
               }`}
             >
               {muted ? <VolumeX className="h-5 w-5" /> : <IconSoundOn className="h-5 w-5" />}

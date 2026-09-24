@@ -73,13 +73,13 @@
     background: var(--color-neon-500);
     border-color: var(--color-neon-700);
     color: #fff;
-    box-shadow: 5px 5px 0 var(--color-crt-000), 0 0 14px rgba(228, 59, 255, 0.4);
+    box-shadow: 5px 5px 0 var(--color-crt-000);
   }
   .btn-accent {
     background: var(--color-cyan-500);
     border-color: var(--color-cyan-700);
     color: var(--color-crt-000);
-    box-shadow: 5px 5px 0 var(--color-crt-000), 0 0 14px rgba(62, 240, 255, 0.4);
+    box-shadow: 5px 5px 0 var(--color-crt-000);
   }
   .btn-ghost {
     background: var(--color-cab-800);
@@ -90,17 +90,12 @@
     color: var(--color-red-500);
     border-color: var(--color-red-500);
   }
+}
 
-  .scanlines::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.22) 0 1px,
-      transparent 1px 3px
-    );
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-cyan-500);
+    outline-offset: 2px;
   }
 }
 
@@ -113,8 +108,47 @@
   animation: coin-blink 1.1s steps(1) infinite;
 }
 
+/* Single 2x gold pulse when the guest's song becomes next (design system §6). */
+@keyframes up-next-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 210, 62, 0);
+  }
+  25% {
+    box-shadow: 0 0 18px 2px rgba(255, 210, 62, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 0 rgba(255, 210, 62, 0);
+  }
+  75% {
+    box-shadow: 0 0 18px 2px rgba(255, 210, 62, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 210, 62, 0);
+  }
+}
+.up-next-pulse {
+  animation: up-next-pulse 0.9s ease-out 2;
+}
+
+/* The cabinet flipping tracks: next card slides up into the now-playing slot. */
+@keyframes track-flip {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.track-flip {
+  animation: track-flip 260ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .coin-blink {
+  .coin-blink,
+  .up-next-pulse,
+  .track-flip {
     animation: none;
   }
 }

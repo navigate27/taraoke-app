@@ -154,11 +154,14 @@ export function HostQueuePanel({
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {nowPlaying && (
           <>
-            <p className="mt-1 mb-2 font-press text-[8px] tracking-[0.2em] text-red-500">
+            <p className="mt-1 mb-2 font-press text-[8px] tracking-[0.2em] text-neon-500">
               Now playing
             </p>
-            <div className="mb-6 grid grid-cols-[28px_80px_1fr] items-center gap-3 rounded-[4px] border-[3px] border-red-500 bg-cab-800 p-2.5">
-              <span className="flex justify-center text-red-500">
+            <div
+              key={nowPlaying.id}
+              className="track-flip mb-6 grid grid-cols-[28px_80px_1fr] items-center gap-3 rounded-[4px] border-[3px] border-neon-500 bg-cab-800 p-2.5 [box-shadow:0_0_12px_rgba(228,59,255,.35)]"
+            >
+              <span className="flex justify-center text-neon-500">
                 <Music className="h-4 w-4" role="img" aria-label="Now playing" />
               </span>
               <img

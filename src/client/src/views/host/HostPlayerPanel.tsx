@@ -35,7 +35,7 @@ export function HostPlayerPanel({
 }: Props) {
   return (
     <section className="panel flex flex-col gap-4 p-5" aria-label="Now playing">
-      <div className="crt scanlines relative min-h-[280px] flex-1 overflow-hidden rounded-[4px] border-[3px] border-cab-700">
+      <div className="crt relative min-h-[280px] flex-1 overflow-hidden rounded-[4px] border-[3px] border-cab-700">
         {nowPlaying && (
           <span className="absolute top-4 right-4 z-10 rounded-[4px] border-2 border-red-700 bg-red-500 px-3 py-2 font-press text-[10px] text-white [text-shadow:2px_2px_0_#7A1030]">
             On air

@@ -254,7 +254,8 @@ export function Guest({ code, nickname, onExit }: Props) {
 
       {upNext && (
         <div
-          className="mx-6 mt-4 flex items-center gap-3 rounded-[4px] border-[3px] border-gold-500 bg-gold-500/10 p-3"
+          key={upNext.id}
+          className="up-next-pulse mx-6 mt-4 flex items-center gap-3 rounded-[4px] border-[3px] border-gold-500 bg-gold-500/10 p-3"
           role="status"
         >
           <span className="font-press text-[9px] leading-relaxed text-gold-500 [text-shadow:0_0_8px_rgba(255,210,62,.7)]">
