@@ -53,8 +53,9 @@ decide visual questions by screenshotting; the user picks in their browser:
   code is the only guest auth.
 - YouTube playback: native HTML5 `<video>` fed by the server's stream resolver +
   range proxy (`/api/stream/:videoId`, built on `youtubei.js`) — owner-approved
-  pivot, 2026-09; accepted trade-offs live in PRD §9. Search still goes through the
-  server-side Data API proxy — API key never reaches the client.
+  pivot, 2026-09; accepted trade-offs live in PRD §9. Search (typed, paste-URL, and
+  suggestions) also runs server-side on `youtubei.js` InnerTube — the YouTube Data
+  API was dropped (owner decision, 2026-09); no API key reaches the client.
 
 ## General
 

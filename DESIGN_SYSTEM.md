@@ -1,7 +1,8 @@
 # Taraoke — Design System
 
-Companion to [PRD.md](./PRD.md) and [TECH_STACK.md](./TECH_STACK.md). v2.0 · 2026-09-23 ·
-Direction: **full pixel cabinet** (user-approved arcade revision, v2).
+Companion to [PRD.md](./PRD.md) and [TECH_STACK.md](./TECH_STACK.md). v2.1 · 2026-09-25 ·
+Direction: **full pixel cabinet** (user-approved arcade revision, v2). v2.1 adds the
+score reveal moment (§5, §6) and its confetti + Taglish-roast exceptions (§7, §10).
 
 ---
 
@@ -168,6 +169,27 @@ Invitations, not apologies. Queue empty on host view: "No songs yet — add the 
 one" + the seeded staples list. Guest search empty: "What are we singing?" + 3
 suggestion chips.
 
+### Score reveal (host view, end-of-song moment)
+A CRT takeover of the player screen when a song naturally ends (never on skip or
+repeat). Host-only. Structure, top to bottom:
+
+- **Micro label** — cyan pixel type, 9px: "Scoring your performance" while rolling,
+  "Your score is" at the reveal.
+- **Score** — Press Start 2P at 8xl, gold, CRT hard shadow + gold glow. The party's
+  number; nothing else on the panel is bigger.
+- **Grade badge** — pixel type at 2xl, directly under the score. Ten tiers over the
+  60–100 roll, tone-coded: `YIKES`/`OOF` (red), `MEH` (muted), `PASSABLE`/`NOT BAD`/
+  `NICE` (cyan), `SOLID`/`GREAT`/`AMAZING`/`PERFECT!` (gold).
+- **Roast line** — Hanken: "Nice one, <nickname> — <comment>", comment in muted text.
+  One comment picked at random from the tier's set; half Taglish by design (see §7).
+- **Next-up card** — Netflix-style: "Next song in <n>s" cyan countdown label above a
+  compact panel (thumbnail 2px bezel · title + channel · cyan play-icon chip). Clickable
+  to advance; the whole overlay also taps to advance. Hidden when the queue is empty.
+
+Sound: a drum roll tracks the roll and cuts at the land; a sting plays at the reveal
+(`public/audio/`, trimmed to the animation length). Scores above 80 add the celebration
+treatment (§6).
+
 ## 6. Motion
 
 One orchestrated moment, few micro-interactions, all respecting
@@ -183,6 +205,15 @@ One orchestrated moment, few micro-interactions, all respecting
   shows a pixel jukebox; a gold coin drops into its slot (Framer Motion, ~1.2s) with a
   cabinet shake and a neon-arch glow pulse, then the room view takes over. One-shot,
   no loop.
+- **Score reveal (the other moment):** on natural song end the player screen is taken
+  over by the score reveal (§5) — a **4s roll** where the number flickers through random
+  values, updates slowing from ~45ms to ~300ms until it lands (drum roll tracking, cut
+  at the land); then an **8s reveal** with a "Next song in Ns" countdown before
+  auto-advance. Tap anywhere skips to the next song at any phase.
+- **Celebration (score > 80):** the grade pops in with a one-shot scale bounce and the
+  score's gold glow pulses 3× — and a **confetti exception** (§10): a one-shot burst of
+  ~160 palette-colored pixel squares (canvas behind the reveal text) that self-cleans
+  in ~3s.
 - **Press feedback:** buttons translate `3px, 3px` on `:active` with hard-shadow
   collapse — the arcade keypress.
 - Everything else: no parallax, no ambient loops, no scroll-triggered reveals.
@@ -190,7 +221,12 @@ One orchestrated moment, few micro-interactions, all respecting
 ## 7. Voice & copy (plain English, arcade flavor)
 
 Interface copy is plain English — casual, confident, lightly arcade-flavored. The user
-has ruled out Taglish; "Taraoke / Tara, kanta na!" is brand only.
+has ruled out Taglish in interface copy; "Taraoke / Tara, kanta na!" is brand only.
+
+**Exception — score-reveal roast comments:** the one-liners under the score are
+deliberately half Taglish ("Walang paltos — perpekto!", "Nakakaawa naman ang mic.") —
+party flavor, user-approved. Badges ("PERFECT!") and every other string in the app
+stay English.
 
 | Rule | Yes | No |
 |---|---|---|
@@ -248,16 +284,18 @@ Core vocabulary (used everywhere, never paraphrased):
   `:focus-visible` ring in `--cyan-500` (2px, offset 2px).
 - QR card always shows the room code as text (scanning isn't available to everyone).
 - `prefers-reduced-motion`: auto-advance becomes a crossfade; insert-coin blink and
-  pulse disabled (static text instead).
+  pulse disabled (static text instead). The score reveal skips the roll (lands
+  instantly, sting still plays) and drops the celebration pop/glow and confetti.
 - Nickname input: text name always present for screen readers (no emoji-only identity).
 
 ## 10. Anti-patterns (explicitly out)
 
 - Rounded-soft everything (the v1 look is retired) — the cabinet is pixel-crisp.
 - Gradient buttons, glassmorphism, confetti — party energy comes from CRT panels,
-  hard shadows, and the auto-advance moment.
+  hard shadows, and the auto-advance moment. (One user-approved exception: the pixel
+  confetti burst in the score-reveal celebration, §6 — it lives only there.)
 - Press Start 2P for body text, song titles, or anything longer than a short heading.
 - Scanlines outside CRT panels — full-screen noise stays subtle (variant A's 22%
   overlay) or lives only on the machine.
 - Taglish copy, corporate-stiff copy, or emoji-decorated strings — plain English,
-  arcade flavor in moments only.
+  arcade flavor in moments only. (Exception: the score-reveal roast comments, §7.)

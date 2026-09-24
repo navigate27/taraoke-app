@@ -67,13 +67,10 @@ and any guest can control playback — the video and its sound stay on the host 
 ### 5.3 Song search & selection
 
 - **Search sources (in priority order):**
-  1. **YouTube Data API v3 search** (server-side, API-key protected) — query
-     `"{title} {artist} karaoke"` against curated karaoke channels; results show title,
+  1. **Innertube search** (server-side via `youtubei.js`) — query
+     `"{title} {artist} karaoke"`, no API key and no daily quota; results show title,
      channel, duration, thumbnail.
-  2. **Innertube search fallback** (server-side via `youtubei.js`) — kicks in
-     automatically when the Data API quota is exhausted or unreachable, so typed
-     search never goes dark.
-  3. **Paste a YouTube URL** — always-available fallback if search quota is exhausted.
+  2. **Paste a YouTube URL** — always-available fallback.
 - Search UX: one search box, filter chips (e.g., OPM, Pop, Rock, 2000s) are nice-to-have;
   results are karaoke-version videos (lyrics on screen baked into the video).
 - **Blank-state picks:** with an empty search box, the modal shows trending picks —
@@ -161,7 +158,7 @@ and any guest can control playback — the video and its sound stay on the host 
 | Frontend | Next.js / Vite + React PWA | Single page, two layouts: host view & guest view |
 | Realtime | WebSockets (Socket.io or Supabase Realtime) | Room events: `queue_updated`, `player_state`, `participant_join/leave` |
 | Backend | Node (host-persisted room state) | Rooms held in memory/Redis; no DB required for MVP |
-| Song search | YouTube Data API v3 (server-side proxy) | Caches popular queries to conserve quota |
+| Song search | Innertube search (server-side via `youtubei.js`) | No API key, no daily quota; result caching for speed |
 | Player | Native HTML5 `<video>` + server stream proxy (`/api/stream/:videoId`) | Host view (authoritative); guest view (synced state, no video, no audio) |
 | Auth | None | Room code = guest auth; host secret token = host auth |
 
@@ -171,8 +168,9 @@ re-seek. The server owns the queue; the host's control actions are just privileg
 mutations. Any guest may control playback (not restricted to their own songs):
 their actions are relayed as `player:control` events that the host's player executes.
 
-**Quota note:** free YouTube API quota ≈ 100 searches/day. Mitigations: result caching,
-curated pre-seeded "karaoke staples" list shipped with the app, URL-paste fallback.
+**Quota note:** the YouTube Data API was dropped (owner decision, 2026-09) — search
+runs on InnerTube via `youtubei.js` with no API key and no daily quota. Result caching
+keeps response times low; the URL-paste fallback always works.
 
 ## 8. Success metrics (MVP)
 
@@ -187,8 +185,8 @@ curated pre-seeded "karaoke staples" list shipped with the app, URL-paste fallba
 |---|---|
 | YouTube stream extraction breaks when YouTube changes player internals | `youtubei.js` is actively maintained; the proxy re-resolves stream URLs on failure and serves an error state the host can skip past. Accepted trade-off per owner decision (2026-09) — replaces the former official-embed-only stance. |
 | googlevideo stream URLs expire / are IP-bound | In-memory URL cache with TTL + single-flight re-resolve on 403; bytes always flow through the server proxy, never a client redirect. |
-| Search quota exhaustion | Caching, seeded catalog, paste-URL fallback |
-| Karaoke search returns non-karaoke videos | Prefer curated karaoke channels in search filter; host previews before play |
+| Search quota exhaustion | N/A — no Data API; InnerTube search has no daily quota. Caching + paste-URL fallback remain. |
+| Karaoke search returns non-karaoke videos | Karaoke/instrumental keyword filter on titles; host previews before play |
 | Host disconnect mid-party | Grace period + reconnect via localStorage host token |
 | Stream proxy bandwidth (host only) | Guest view has no stream request; quality capped at muxed progressive formats; can be lowered to 360p with a one-line change if needed |
 

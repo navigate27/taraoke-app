@@ -13,7 +13,7 @@ Companion to [PRD.md](./PRD.md). Decisions and rationale for v1 (MVP).
 | Realtime | Socket.io on Node | Supabase Realtime, PartyKit / Durable Objects |
 | Backend | Fastify (Node) — serves API, WebSockets, and static build | Express, NestJS |
 | Room state | In-memory (per-process) | Redis, Postgres |
-| Song search | YouTube Data API v3 (server-side proxy) | Direct client calls (key exposure) |
+| Song search | Innertube search (server-side via `youtubei.js`) | YouTube Data API v3 (dropped 2026-09 — key + quota overhead) |
 | Player | Native HTML5 `<video>` fed by server-side YouTube stream resolver (`youtubei.js`) via `/api/stream/:videoId` proxy | YouTube IFrame Player API (replaced 2026-09, owner decision) |
 | QR codes | `qrcode` (generated client-side) | — |
 | Hosting | Single Node process — Railway / Fly.io / VPS | Vercel (rejected: no persistent WebSockets) |
@@ -73,11 +73,12 @@ Idle rooms auto-expire (see PRD §5.6). No database in v1.
 
 ### YouTube integration
 
-- **Search is proxied server-side** so the API key never reaches the browser, with
-  response caching to conserve the ~100 free searches/day quota, plus the paste-URL
-  fallback (PRD §5.3). When the Data API is exhausted (429) or unreachable, the proxy
-  falls back to `youtubei.js` search (InnerTube, no Data API quota) so typed search
-  keeps working.
+- **Search runs on InnerTube** (`youtubei.js`, server-side) — same dependency as the
+  stream resolver, no API key and no daily quota. The YouTube Data API v3 was dropped
+  (owner decision, 2026-09): it added key management and a ~100 searches/day quota for
+  no quality win. Typed search, suggestions, and the blank-state picks all flow through
+  the same server-side search with response caching; pasting a YouTube URL remains the
+  always-available fallback (PRD §5.3).
 - **Playback** (owner-approved pivot, 2026-09 — replaces the former official-embed-only
   stance): the server resolves YouTube stream URLs with `youtubei.js`, caches them
   in memory with a TTL, and proxies the bytes at `GET /api/stream/:videoId` with
@@ -123,7 +124,7 @@ kr/
 
 - Package manager: **pnpm**.
 - One `pnpm dev` (concurrently) runs Vite + server; shared types live in `src/shared`.
-- No secrets in client code; YouTube API key is server-only via env.
+- No secrets in client code; external API keys (Last.fm) are server-only via env.
 - No database, no auth service — room code = guest auth, host token = host auth
   (stored in `localStorage`).
 

@@ -49,9 +49,7 @@ import {
 } from "./lastfm";
 import { normalizeTitle } from "../shared/songTitle";
 import {
-  getTrendingVideos,
   karaokeOnly,
-  NON_SONG_RE,
   resolveYouTubeUrl,
   searchYouTube,
 } from "./youtube";
@@ -228,33 +226,26 @@ app.get<{
         });
       }
     }
-    const trending = await getTrendingVideos(
-      "PH",
-      page.startsWith("y:") ? page.slice(2) : undefined,
-    );
-    if (trending.results.length > 0) {
-      const resolved = await resolveKaraokeVersions(
-        trending.results.slice(0, 6),
-      );
-      const results =
-        resolved.length > 0
-          ? resolved
-          : trending.results
-              .filter((r) => !NON_SONG_RE.test(r.title))
-              .slice(0, 6);
+    const trending = await searchYouTube("OPM videoke classics");
+    const resolved =
+      trending.results.length > 0
+        ? await resolveKaraokeVersions(trending.results.slice(0, 6))
+        : [];
+    const results =
+      resolved.length > 0
+        ? resolved
+        : karaokeOnly(trending.results).slice(0, 6);
+    if (results.length > 0) {
       return reply.send({
         results,
         artists: [
           ...new Set(
-            trending.results
-              .slice(0, 6)
+            results
               .map((r) => cleanArtist(r.channel))
               .filter(Boolean),
           ),
         ],
-        nextPageToken: trending.nextPageToken
-          ? `y:${trending.nextPageToken}`
-          : null,
+        nextPageToken: null,
         mode: "trending",
       });
     }
@@ -262,11 +253,13 @@ app.get<{
 
   const { results, nextPageToken } = await searchYouTube(
     seed || "OPM videoke classics",
-    page.startsWith("y:") ? page.slice(2) : undefined,
   );
   const filtered = karaokeOnly(results);
   reply.send({
     results: filtered,
+    artists: [
+      ...new Set(filtered.map((r) => cleanArtist(r.channel)).filter(Boolean)),
+    ],
     nextPageToken: nextPageToken ? `y:${nextPageToken}` : null,
     mode: "title",
   });
