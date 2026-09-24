@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play } from "pixelarticons/react";
 
 export function randomScore(): number {
@@ -8,6 +8,8 @@ export function randomScore(): number {
 const ROLL_MS = 4000;
 const REVEAL_MS = 8000;
 const CELEBRATE_ABOVE = 80;
+const DRUM_ROLL_URL = "/audio/drum-roll.mp3";
+const STING_URL = "/audio/score-reveal.mp3";
 
 type GradeTone = "gold" | "cyan" | "muted" | "red";
 
@@ -138,6 +140,70 @@ const TONE_CLASS: Record<GradeTone, string> = {
   red: "text-red-500 [filter:drop-shadow(0_0_10px_rgba(255,61,90,.45))]",
 };
 
+const CONFETTI_COLORS = ["#FFD23E", "#3EF0FF", "#E43BFF", "#F2EDFF"];
+
+function ConfettiBurst() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    const w = (canvas.width = canvas.clientWidth);
+    const h = (canvas.height = canvas.clientHeight);
+    if (!w || !h) return;
+    const pieces = Array.from({ length: 160 }, () => ({
+      x: w / 2 + (Math.random() - 0.5) * w * 0.3,
+      y: h * 0.5,
+      vx: (Math.random() - 0.5) * 14,
+      vy: -(5 + Math.random() * 10),
+      size: 4 + Math.random() * 5,
+      rot: Math.random() * Math.PI * 2,
+      vr: (Math.random() - 0.5) * 0.3,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)] ?? "#FFD23E",
+      life: 1,
+    }));
+    let raf = 0;
+    const tick = () => {
+      ctx.clearRect(0, 0, w, h);
+      let alive = false;
+      for (const p of pieces) {
+        p.vy += 0.22;
+        p.vx *= 0.99;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+        p.life -= 0.006;
+        if (p.life <= 0 || p.y > h + 12) continue;
+        alive = true;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, p.life);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        ctx.restore();
+      }
+      if (alive) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        ctx.clearRect(0, 0, w, h);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-0 h-full w-full"
+    />
+  );
+}
+
 interface Props {
   score: number;
   nickname: string;
@@ -159,6 +225,7 @@ export function ScoreReveal({
   const [shown, setShown] = useState(60);
   const [comment, setComment] = useState("");
   const [countdown, setCountdown] = useState(REVEAL_MS / 1000);
+  const drumRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (!rolling) return;
@@ -166,13 +233,19 @@ export function ScoreReveal({
       setShown(score);
       setComment(pickComment(tierFor(score)));
       setRolling(false);
+      new Audio(STING_URL).play().catch(() => {});
       return;
     }
+    const drum = new Audio(DRUM_ROLL_URL);
+    drumRef.current = drum;
+    drum.play().catch(() => {});
     let timer = 0;
     const start = performance.now();
     const tick = () => {
       const t = Math.min(1, (performance.now() - start) / ROLL_MS);
       if (t >= 1) {
+        drum.pause();
+        new Audio(STING_URL).play().catch(() => {});
         setShown(score);
         setComment(pickComment(tierFor(score)));
         setRolling(false);
@@ -182,7 +255,11 @@ export function ScoreReveal({
       timer = window.setTimeout(tick, 45 + 255 * t * t);
     };
     timer = window.setTimeout(tick, 45);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      drum.pause();
+      drumRef.current = null;
+    };
   }, [rolling, score]);
 
   useEffect(() => {
@@ -204,9 +281,11 @@ export function ScoreReveal({
     <div
       data-testid="score-reveal"
       onClick={onAdvance}
-      className="crt absolute inset-0 z-20 flex cursor-pointer flex-col items-center justify-center gap-5 rounded-[4px] px-4 text-center"
+      className="crt absolute inset-0 z-20 cursor-pointer overflow-hidden rounded-[4px]"
     >
-      <span className="font-press text-[9px] uppercase tracking-[0.12em] text-cyan-500">
+      {celebrate && <ConfettiBurst />}
+      <div className="relative z-10 flex h-full flex-col items-center justify-center gap-5 px-4 text-center">
+        <span className="font-press text-[9px] uppercase tracking-[0.12em] text-cyan-500">
         {rolling ? "Scoring your performance" : "Your score is"}
       </span>
       <span
@@ -278,6 +357,7 @@ export function ScoreReveal({
           </span>
         </>
       )}
+      </div>
     </div>
   );
 }
