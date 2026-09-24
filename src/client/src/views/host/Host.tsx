@@ -170,11 +170,14 @@ export function Host({ code, token, nickname, onExit }: Props) {
       return;
     }
     const nowPlaying = state?.nowPlaying;
+    const next = state?.queue[0] ?? null;
     if (nowPlaying) {
       setReveal({
         score: randomScore(),
         nickname: nowPlaying.addedBy,
-        nextTitle: state?.queue[0]?.title ?? null,
+        nextTitle: next?.title ?? null,
+        nextChannel: next?.channel ?? null,
+        nextThumbnail: next?.thumbnail ?? null,
       });
     }
   }

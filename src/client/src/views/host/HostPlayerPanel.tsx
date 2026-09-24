@@ -9,6 +9,8 @@ export interface RevealState {
   score: number;
   nickname: string;
   nextTitle: string | null;
+  nextChannel: string | null;
+  nextThumbnail: string | null;
 }
 
 interface Props {
@@ -110,6 +112,8 @@ export function HostPlayerPanel({
             score={reveal.score}
             nickname={reveal.nickname}
             nextTitle={reveal.nextTitle}
+            nextChannel={reveal.nextChannel}
+            nextThumbnail={reveal.nextThumbnail}
             onAdvance={onAdvanceReveal}
           />
         )}

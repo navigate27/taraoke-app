@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Play } from "pixelarticons/react";
 import { gradeFor } from "../scoring/curve";
 
 export function randomScore(): number {
@@ -24,10 +25,19 @@ interface Props {
   score: number;
   nickname: string;
   nextTitle: string | null;
+  nextChannel: string | null;
+  nextThumbnail: string | null;
   onAdvance: () => void;
 }
 
-export function ScoreReveal({ score, nickname, nextTitle, onAdvance }: Props) {
+export function ScoreReveal({
+  score,
+  nickname,
+  nextTitle,
+  nextChannel,
+  nextThumbnail,
+  onAdvance,
+}: Props) {
   const [rolling, setRolling] = useState(true);
   const [shown, setShown] = useState(60);
   const [countdown, setCountdown] = useState(REVEAL_MS / 1000);
@@ -69,10 +79,8 @@ export function ScoreReveal({ score, nickname, nextTitle, onAdvance }: Props) {
   const celebrate = !rolling && score > CELEBRATE_ABOVE;
 
   return (
-    <button
-      type="button"
+    <div
       data-testid="score-reveal"
-      aria-label={rolling ? `Scoring, tap to skip` : `Score ${score}. Tap to next song`}
       onClick={onAdvance}
       className="crt absolute inset-0 z-20 flex cursor-pointer flex-col items-center justify-center gap-5 rounded-[4px] px-4 text-center"
     >
@@ -108,18 +116,52 @@ export function ScoreReveal({ score, nickname, nextTitle, onAdvance }: Props) {
             <span className="text-arc-500">{commentFor(score)}</span>
           </span>
           {nextTitle && (
-            <span
-              data-testid="score-reveal-next"
-              className="max-w-full truncate px-6 text-sm text-arc-500"
-            >
-              Up next: <span className="text-arc-100">{nextTitle}</span>
-            </span>
+            <div className="flex flex-col items-center gap-2">
+              <span
+                data-testid="score-reveal-countdown"
+                className="font-press text-[9px] uppercase tracking-[0.12em] text-cyan-500"
+              >
+                Next song in {Math.max(0, countdown)}s
+              </span>
+              <button
+                type="button"
+                data-testid="score-reveal-next"
+                aria-label={`Play next: ${nextTitle}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAdvance();
+                }}
+                className="panel flex max-w-[320px] cursor-pointer items-center gap-3 p-2 text-left transition-transform active:translate-x-[3px] active:translate-y-[3px] active:shadow-none hover:brightness-110"
+              >
+                <img
+                  src={nextThumbnail ?? ""}
+                  alt=""
+                  className="h-14 w-24 shrink-0 rounded-[4px] border-2 border-cab-700 object-cover"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-arc-100">
+                    {nextTitle}
+                  </span>
+                  {nextChannel && (
+                    <span className="block truncate text-xs text-arc-500">
+                      {nextChannel}
+                    </span>
+                  )}
+                </span>
+                <span
+                  aria-hidden
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[4px] border-2 border-cyan-700 bg-cyan-500 text-cab-900 [box-shadow:2px_2px_0_var(--color-crt-000)]"
+                >
+                  <Play className="h-4 w-4" />
+                </span>
+              </button>
+            </div>
           )}
           <span className="font-press text-[9px] uppercase tracking-[0.12em] text-arc-500">
-            Tap for next song · auto in {Math.max(0, countdown)}s
+            Tap anywhere to continue
           </span>
         </>
       )}
-    </button>
+    </div>
   );
 }
