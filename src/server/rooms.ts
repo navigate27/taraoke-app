@@ -45,6 +45,10 @@ export function getRoom(code: string): Room | undefined {
   return rooms.get(code.toUpperCase());
 }
 
+export function deleteRoom(code: string): void {
+  rooms.delete(code.toUpperCase());
+}
+
 export function touchRoom(room: Room): void {
   room.lastActivityAt = Date.now();
 }

@@ -71,6 +71,10 @@ export type ClientToServerEvents = {
     callback: (res: { ok: boolean; error?: string }) => void,
   ) => void;
   "room:leave": () => void;
+  "room:end": (
+    token: string,
+    callback: (res: { ok: boolean }) => void,
+  ) => void;
   "host:action": (token: string, action: HostAction) => void;
   "player:state": (token: string, state: PlayerState) => void;
   "queue:add": (

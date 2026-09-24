@@ -24,6 +24,7 @@ import {
   advanceQueue,
   applyHostAction,
   createRoom,
+  deleteRoom,
   getRoom,
   publicState,
   removeParticipant,
@@ -96,7 +97,11 @@ io.on("connection", (socket) => {
       callback({ ok: false, error: "Room not found — check the code" });
       return;
     }
-    const cleanNickname = nickname.trim().slice(0, 20) || "Guest";
+    const cleanNickname = nickname.trim().slice(0, 20);
+    if (!cleanNickname) {
+      callback({ ok: false, error: "Enter your name first" });
+      return;
+    }
     if (hostToken && hostToken === room.hostToken) {
       room.hostSocketId = socket.id;
     }
@@ -128,6 +133,23 @@ io.on("connection", (socket) => {
     const left = removeParticipant(room, socket.id);
     if (left) io.to(code).emit("participantLeft", left);
     socket.leave(code);
+  });
+
+  socket.on("room:end", (token, callback) => {
+    const code = socket.data.roomCode;
+    if (!code) {
+      callback({ ok: false });
+      return;
+    }
+    const room = getRoom(code);
+    if (!room || token !== room.hostToken) {
+      callback({ ok: false });
+      return;
+    }
+    io.to(code).emit("error", "Room ended");
+    deleteRoom(code);
+    socket.data.roomCode = null;
+    callback({ ok: true });
   });
 
   socket.on("queue:add", (item, callback) => {

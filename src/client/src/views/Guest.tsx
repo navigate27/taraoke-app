@@ -146,6 +146,19 @@ export function Guest({ code, nickname, onExit }: Props) {
                 aria-label="Search songs"
                 className="min-w-0 flex-1 bg-transparent font-medium text-arc-100 outline-none placeholder:text-arc-500"
               />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    setResults([]);
+                  }}
+                  aria-label="Clear search"
+                  className="px-1 py-1 text-sm text-arc-500 hover:text-arc-100"
+                >
+                  ✕
+                </button>
+              )}
             </label>
 
             {!query && (

@@ -15,27 +15,29 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
   const savedHost = loadHost();
 
   function createRoom() {
+    if (!nickname.trim()) {
+      setError("Enter your name first");
+      return;
+    }
     socket.emit("room:create", (res) => {
       onCreate(res.code, res.hostToken);
     });
   }
 
   function joinRoom() {
+    if (!nickname.trim()) {
+      setError("Enter your name first");
+      return;
+    }
     const code = codeInput.trim().toUpperCase();
     if (!code) {
       setError("Enter a room code");
       return;
     }
-    socket.emit(
-      "room:join",
-      code,
-      nickname.trim() || "Guest",
-      null,
-      (res) => {
-        if (res.ok) onJoin(code, nickname.trim() || "Guest");
-        else setError(res.error ?? "Could not join");
-      },
-    );
+    socket.emit("room:join", code, nickname.trim(), null, (res) => {
+      if (res.ok) onJoin(code, nickname.trim());
+      else setError(res.error ?? "Could not join");
+    });
   }
 
   function resumeHosting() {
@@ -64,14 +66,18 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
 
       <section className="crt scanlines panel w-full max-w-sm p-6">
         <label className="mb-1 block text-xs font-semibold tracking-widest text-arc-500 uppercase">
-          Your nickname
+          Hostname
         </label>
         <input
           value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
+          onChange={(e) => {
+            setNickname(e.target.value);
+            setError(null);
+          }}
           maxLength={20}
-          placeholder="Player 1"
-          className="crt mb-5 w-full rounded-[4px] border-[3px] border-cab-700 px-3 py-3 text-arc-100 outline-none placeholder:text-arc-500 focus:border-cyan-500"
+          required
+          placeholder="Mang Boy"
+          className="crt mb-5 w-full rounded-[4px] border-[3px] border-cab-700 px-3 py-3 text-arc-100 outline-none placeholder:text-arc-500/60 focus:border-cyan-500"
         />
 
         <button
@@ -89,7 +95,10 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
 
         <input
           value={codeInput}
-          onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+          onChange={(e) => {
+            setCodeInput(e.target.value.toUpperCase());
+            setError(null);
+          }}
           placeholder="TARA-XXXX"
           className="crt mb-5 w-full rounded-[4px] border-[3px] border-cab-700 px-3 py-3 text-center font-press text-[13px] text-cyan-500 outline-none placeholder:text-arc-500 focus:border-cyan-500"
         />

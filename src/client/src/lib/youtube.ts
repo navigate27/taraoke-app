@@ -4,8 +4,12 @@ export interface YTPlayer {
   loadVideoById(videoId: string): void;
   playVideo(): void;
   pauseVideo(): void;
+  mute(): void;
+  unMute(): void;
+  isMuted(): boolean;
   getCurrentTime(): number;
   getDuration(): number;
+  seekTo(seconds: number): void;
   destroy(): void;
 }
 
