@@ -1,0 +1,17 @@
+{
+  "name": "Taraoke — instant karaoke rooms",
+  "short_name": "Taraoke",
+  "description": "Instant karaoke rooms. No account needed.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F0A1E",
+  "theme_color": "#0F0A1E",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "1230x1230",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -34,20 +34,25 @@ export function HostPlayerPanel({
   onNext,
 }: Props) {
   return (
-    <section className="panel flex flex-col gap-4 p-5" aria-label="Now playing">
+    <section className="panel flex flex-col gap-4 p-5" aria-label="Now playing" data-testid="player-panel">
       <div className="crt relative min-h-[280px] flex-1 overflow-hidden rounded-[4px] border-[3px] border-cab-700">
         {nowPlaying && (
-          <span className="absolute top-4 right-4 z-10 rounded-[4px] border-2 border-red-700 bg-red-500 px-3 py-2 font-press text-[10px] text-white [text-shadow:2px_2px_0_#7A1030]">
-            On air
+          <span
+            data-testid="player-badge-live"
+            className="absolute top-4 right-4 z-10 rounded-[4px] border-2 border-red-700 bg-red-500 px-3 py-2 font-press text-[10px] text-white [text-shadow:2px_2px_0_#7A1030]"
+          >
+            LIVE
           </span>
         )}
         <div
           ref={containerRef}
+          data-testid="player-video"
           className="absolute inset-0 flex items-center justify-center [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0"
         />
         {nowPlaying && (
           <button
             type="button"
+            data-testid="player-btn-video-toggle"
             onClick={onTogglePlay}
             aria-label={playing ? "Pause video" : "Play video"}
             className="absolute inset-0 z-[5] cursor-pointer"
@@ -56,6 +61,7 @@ export function HostPlayerPanel({
         {nowPlaying && !playing && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center [&>button]:pointer-events-auto">
             <button
+              data-testid="player-btn-resume"
               onClick={onTogglePlay}
               aria-label="Play"
               className="btn btn-primary h-16 w-16"
@@ -66,7 +72,9 @@ export function HostPlayerPanel({
         )}
         {!nowPlaying && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-cab-900">
-            <p className="text-arc-500">No songs yet — add the first one.</p>
+            <p data-testid="player-empty" className="text-arc-500">
+              No songs yet — add the first one.
+            </p>
           </div>
         )}
       </div>
@@ -74,18 +82,29 @@ export function HostPlayerPanel({
         <>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-lg font-semibold">{nowPlaying.title}</p>
+              <p data-testid="player-title" className="text-lg font-semibold">
+                {nowPlaying.title}
+              </p>
               <div className="mt-1 flex items-center gap-2 text-sm text-arc-500">
-                <span className="truncate">{nowPlaying.channel}</span>
+                <span data-testid="player-channel" className="truncate">
+                  {nowPlaying.channel}
+                </span>
                 <ParticipantChip nickname={nowPlaying.addedBy} size="sm" />
               </div>
             </div>
-            <span className="font-press text-[20px] text-gold-500 [text-shadow:0_0_8px_rgba(255,210,62,.55)]">
+            <span
+              data-testid="player-remaining"
+              className="font-press text-[20px] text-gold-500 [text-shadow:0_0_8px_rgba(255,210,62,.55)]"
+            >
               {remaining}
             </span>
           </div>
-          <div className="h-3.5 overflow-hidden rounded-[4px] border-[3px] border-cab-700 bg-crt-000">
+          <div
+            data-testid="player-progress"
+            className="h-3.5 overflow-hidden rounded-[4px] border-[3px] border-cab-700 bg-crt-000"
+          >
             <div
+              data-testid="player-progress-fill"
               className="h-full bg-cyan-500 [background-image:repeating-linear-gradient(90deg,#3EF0FF_0_10px,#19B9C9_10px_14px)]"
               style={{ width: `${progress * 100}%` }}
             />

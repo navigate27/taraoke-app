@@ -309,6 +309,7 @@ export function Host({ code, token, nickname, onExit }: Props) {
         <JoinPanel code={code} participants={participants}>
           <div className="mt-auto pt-4">
             <button
+              data-testid="host-btn-end-room"
               onClick={() => setEndConfirm(true)}
               className="btn btn-danger w-full px-4 py-3 text-[9px]"
             >
@@ -341,6 +342,7 @@ export function Host({ code, token, nickname, onExit }: Props) {
           onPlayItem={playQueueItem}
           onAddSong={() => setSearchOpen(true)}
           onReadd={addToQueue}
+          onSuggestionAdd={addToQueue}
         />
       </main>
 
@@ -356,6 +358,7 @@ export function Host({ code, token, nickname, onExit }: Props) {
         <div
           className="crt fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-[4px] border-[3px] border-cyan-500 px-5 py-3 text-sm font-semibold text-cyan-500 [box-shadow:0_0_14px_rgba(62,240,255,.4)]"
           role="status"
+          data-testid="toast"
         >
           {toast}
         </div>
@@ -368,6 +371,7 @@ export function Host({ code, token, nickname, onExit }: Props) {
           confirmLabel="End room"
           cancelLabel="Keep playing"
           danger
+          testIdPrefix="end-room"
           onConfirm={() => {
             socket.emit("room:end", token, (res) => {
               if (res.ok) clearHost();
@@ -383,6 +387,7 @@ export function Host({ code, token, nickname, onExit }: Props) {
           message="The current song is still playing. Jump to this one now?"
           confirmLabel="Play it now"
           cancelLabel="Keep current"
+          testIdPrefix="play-now"
           onConfirm={() => {
             socket.emit("host:action", token, {
               type: "play-now",

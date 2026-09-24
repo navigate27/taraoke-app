@@ -5,6 +5,13 @@ see AGENTS.md).
 
 @AGENTS.md
 
+## Media policy (hard rule)
+
+- **Never ever read media files** — images, screenshots, PDFs, video, any binary/visual
+  asset. It floods and corrupts the session context. Applies even if the user attaches
+  a path or the task seems to need it; describe or reason about visuals without reading
+  them, and let the user's own eyes verify.
+
 ## Git hosting (hard rule)
 
 - **Never open PRs. Never touch Forgejo** — no Forgejo MCP calls for issues, PRs,

@@ -26,24 +26,39 @@ export function JoinPanel({ code, participants, children }: Props) {
   }, [code]);
 
   return (
-    <section className="panel flex flex-col p-5" aria-label="Join the room">
-      <h2 className="mb-4 font-press text-[13px] text-gold-500 [text-shadow:2px_2px_0_#5C4A0E]">
+    <section className="panel flex flex-col p-5" aria-label="Join the room" data-testid="join-panel">
+      <h2
+        data-testid="join-heading"
+        className="mb-4 font-press text-[13px] text-gold-500 [text-shadow:2px_2px_0_#5C4A0E]"
+      >
         Join the room
       </h2>
       {qrUrl ? (
-        <div className="crt flex justify-center rounded-[4px] border-[3px] border-cab-700 p-4">
+        <div
+          data-testid="join-qr"
+          className="crt flex justify-center rounded-[4px] border-[3px] border-cab-700 p-4"
+        >
           <img src={qrUrl} alt={`Room code ${code}`} width={150} height={150} />
         </div>
       ) : (
-        <div className="crt h-[182px] rounded-[4px] border-[3px] border-cab-700" />
+        <div
+          data-testid="join-qr"
+          className="crt h-[182px] rounded-[4px] border-[3px] border-cab-700"
+        />
       )}
-      <p className="mt-4 text-center font-press text-[22px] text-cyan-500 [text-shadow:0_0_8px_rgba(62,240,255,.7)]">
+      <p
+        data-testid="join-code"
+        className="mt-4 text-center font-press text-[22px] text-cyan-500 [text-shadow:0_0_8px_rgba(62,240,255,.7)]"
+      >
         {code}
       </p>
-      <p className="mt-2 text-center text-sm text-arc-500">
+      <p data-testid="join-hint" className="mt-2 text-center text-sm text-arc-500">
         Scan the QR or type the room code
       </p>
-      <p className="coin-blink mt-3 text-center font-press text-[9px] text-gold-500">
+      <p
+        data-testid="join-blink"
+        className="coin-blink mt-3 text-center font-press text-[9px] text-gold-500"
+      >
         Insert coin to join
       </p>
       <ParticipantChips participants={participants} />

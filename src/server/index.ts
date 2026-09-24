@@ -78,6 +78,17 @@ app.get<{ Querystring: { url?: string } }>(
   },
 );
 
+app.get<{ Querystring: { seed?: string } }>(
+  "/api/suggestions",
+  async (req, reply) => {
+    const seed = (req.query.seed ?? "").trim().slice(0, 120);
+    const { results } = await searchYouTube(
+      seed || "OPM videoke classics",
+    );
+    reply.send({ results: results.slice(0, 6) });
+  },
+);
+
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(app.server, {
   cors: { origin: true },
 });

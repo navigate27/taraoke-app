@@ -50,7 +50,7 @@ never competing.
 | `--neon-500` | `#E43BFF` | **Player 1 magenta** | Primary actions, play, active/playing states |
 | `--cyan-500` | `#3EF0FF` | **Player 2 cyan** | Links, room code, progress bar, selection |
 | `--gold-500` | `#FFD23E` | **High-score gold** | Countdown, scores, "you're up next", section headers |
-| `--red-500` | `#FF3D5A` | **On-air red** | "ON AIR" badge, destructive actions (end room) |
+| `--red-500` | `#FF3D5A` | **On-air red** | "LIVE" badge, destructive actions (end room) |
 
 Rules:
 - Magenta leads (P1 = the host), cyan supports, gold scores, red warns. Never magenta
@@ -113,7 +113,7 @@ never used for sentences longer than ~6 words. Everything longer is Hanken. Body
 ├───────────────┬─────────────────────┬───────────────┤
 │  QR + code    │   YOUTUBE PLAYER    │   QUEUE       │
 │  (CRT panel)  │   16:9, scanlines   │  (high-score  │
-│  + coin blink │   ON AIR badge      │   rows)       │
+│  + coin blink │   LIVE badge       │   rows)       │
 ├───────────────┴─────────────────────┴───────────────┤
 │  transport: ⏮ ▶/⏸ ⏭ · END ROOM                     │
 └─────────────────────────────────────────────────────┘
@@ -157,7 +157,7 @@ Small square-cornered tag, `--cab-700` fill, 2px `#3A2B66` bezel, colored 8px sq
 player-dot (cycled from the palette). Duplicates get auto-suffixes ("Ivan 2").
 
 ### Badges & micro-moments
-- **ON AIR** — red fill, pixel type, hard shadow, top-right of the player. Host view only.
+- **LIVE** — red fill, pixel type, hard shadow, top-right of the player. Host view only.
 - **INSERT COIN TO JOIN** — gold pixel type under the room code, 1.1s steps blink.
   The one allowed infinite animation.
 - **Toast / confirmation** — CRT mini-panel, action result only: "Added to queue —
@@ -211,14 +211,26 @@ Core vocabulary (used everywhere, never paraphrased):
   via CSS classes; glows on SVG icons use `drop-shadow` filter. Active toggles
   (repeat on, more-options open, sound on) light up in cyan with a text glow instead
   of a filled background.
-- Two transport icons are **custom 1-bit inline SVGs** in the same 24px/pixel style,
-  because the pack's glyphs don't read correctly there: **fullscreen** (four corner
-  brackets — the pack's `expand` looks like a plus) and **sound on** (speaker +
-  wave bars drawn to the same bounding box as `volume-x`, so the mute/unmute toggle
-  doesn't shift optically).
+- One transport icon is a **custom 1-bit inline SVG** in the same 24px/pixel style:
+  **sound on** (speaker + wave bars drawn to the same bounding box as `volume-x`, so
+  the mute/unmute toggle doesn't shift optically). **Fullscreen** uses the pack's
+  `Scale` (opposing diagonal arrows) — the pack has no fullscreen glyph and `expand`
+  looks like a plus. **Repeat** uses the pack's `Reload` (circular rotate arrow) —
+  the pack has no rotate glyph and `repeat`/`repeat-1` scatter into noise at 20px.
+- **Icon-only buttons** carry a hover/focus tooltip via a `data-tip` attribute —
+  a CRT mini-panel (2px bezel, hard shadow, 8px pixel type, uppercase) rendered
+  with CSS `[data-tip]::after` above the button; no native `title` on those
+  buttons. Hover tooltips fire only on hover-capable pointers (touch taps must
+  not leave a stuck tooltip); `:focus-visible` shows it on any device. Buttons
+  with visible text labels don't get tooltips.
 - Transport keeps **unicode glyphs** (▶ ❚❚ ⏭) — pixel-font-native and the
-  arcade-authentic look; don't replace them with an icon pack. The `★ Taraoke ★`
-  marquee is brand decoration, also kept as text.
+  arcade-authentic look; don't replace them with an icon pack.
+- **App mark** (`/icon.png`, also the favicon + PWA icon): the pixel jukebox art is
+  the brand mark inside the app. Shown in exactly two places — the Home header
+  (80px mark above the pixel wordmark, hard offset shadow) and the room CRT marquee
+  (20px mark left of the wordmark). The wordmark stays Press Start 2P with the neon
+  glow; the mark replaces the old `★ … ★` star framing. Never use it as a bullet,
+  watermark, or filler elsewhere.
 - No stock photos of people singing. Imagery is the machine itself: CRT panels,
   speaker-grille texture at ≤4% contrast, bezels.
 - Thumbnails (YouTube) are the app's de facto imagery — keep chrome quiet so they read

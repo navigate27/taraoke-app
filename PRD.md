@@ -78,8 +78,13 @@ default) and can control playback only for songs they added.
   - Play / pause / skip current song.
   - Reorder, remove, or clear queue items.
 - Queue item states: `queued → playing → done` (and `skipped`).
-- Queue panel is organized top-to-bottom: **Now playing** → **Next** (the FIFO queue,
-  with its item count) → **Previously played** (recently finished songs, newest first).
+- Queue panel is organized top-to-bottom: **Now playing**, then a tabbed section
+  with two nav tabs — **Next** (the FIFO queue, with its item count) and **Played**
+  (recently finished songs, newest first) — and, below the tab content, a
+  **Suggestions** section: karaoke videos seeded from the current song or the most
+  recent queued/played song (falling back to OPM staples when the room is fresh).
+  Suggestions come from the server's YouTube proxy with a per-seed cache to conserve
+  quota; songs already queued are hidden from the list.
 - Each item shows: thumbnail, title, added-by nickname (as a participant chip), duration.
 - Removing a queued item asks the host to confirm. Played songs can be queued again
   (button on each played row; shows "Added" instead when the song is already queued).
@@ -100,14 +105,16 @@ default) and can control playback only for songs they added.
 - The guest video panel is **hidden by default** (no iframe is mounted — saves
   mobile data, CPU, and battery). A "Show video" toggle mounts the synced player
   on demand; the sync broadcasts continue either way (they're only a few bytes/s).
-- Player transport (host and guest panels share one layout): **repeat, play/pause,
-  fullscreen**, plus **more options** on small screens only — the more-options button
-  opens an inline popup (closes only when the button is toggled again — not on blur)
-  holding **-10, +10, mute, next**. On large screens those four actions appear
-  directly in the transport row instead. Fullscreen fills the screen with the video
-  container; repeat is a repeat-one toggle — turning it on also restarts the current
-  song from the top; when on, the host replays the song at its end instead of
-  advancing.
+- Player transport (host and guest panels share one layout), split left/right:
+  - **Large screens:** left group **repeat, -10, play/pause, +10, next**;
+    right group **sound, fullscreen**.
+  - **Small screens:** left group **repeat, play/pause, next**; right group
+    **more options** — a button that opens an inline popup (closes only when the
+    button is toggled again — not on blur) holding, in order, **-10, +10, sound,
+    fullscreen**.
+  - Fullscreen fills the screen with the video container; repeat is a repeat-one
+    toggle — turning it on also restarts the current song from the top; when on,
+    the host replays the song at its end instead of advancing.
 - Guest transport controls are gated by song ownership:
   - Song **not** added by this guest → local mute toggle only (inside more options).
   - Song **added by this guest** → full transport: play/pause, repeat, -10/+10 seek,

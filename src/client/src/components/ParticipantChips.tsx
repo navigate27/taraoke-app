@@ -6,7 +6,7 @@ export function ParticipantChips({
   participants: { nickname: string; isHost: boolean }[];
 }) {
   return (
-    <div className="mt-4 flex flex-wrap gap-2">
+    <div data-testid="chip-list" className="mt-4 flex flex-wrap gap-2">
       {participants.map((p) => (
         <ParticipantChip key={p.nickname} nickname={p.nickname} isHost={p.isHost} />
       ))}

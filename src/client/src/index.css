@@ -90,6 +90,57 @@
     color: var(--color-red-500);
     border-color: var(--color-red-500);
   }
+
+  [data-tip] {
+    position: relative;
+  }
+  [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    translate: -50% 0;
+    padding: 5px 8px;
+    border: 2px solid var(--color-cab-700);
+    border-radius: 4px;
+    background: var(--color-cab-800);
+    color: var(--color-arc-100);
+    font-family: var(--font-press);
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    box-shadow: 3px 3px 0 var(--color-crt-000);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease-out;
+    z-index: 9999;
+  }
+  /* Raise the whole button while its tooltip is visible so the tooltip
+     can't be painted under later-positioned siblings (video overlay,
+     sticky bars, modals). */
+  [data-tip]:hover,
+  [data-tip]:focus-visible {
+    z-index: 9999;
+  }
+  /* Right-edge buttons: anchor the tooltip to the button's right edge so it
+     grows leftward instead of overflowing the panel and causing a
+     horizontal scroll. */
+  [data-tip-side="left"]::after {
+    left: auto;
+    right: 0;
+    translate: 0 0;
+  }
+  /* Touch devices "stick" :hover after a tap — only show tooltips on
+     hover-capable pointers; :focus-visible still works everywhere. */
+  @media (hover: hover) {
+    [data-tip]:hover::after {
+      opacity: 1;
+    }
+  }
+  [data-tip]:focus-visible::after {
+    opacity: 1;
+  }
 }
 
 @layer base {

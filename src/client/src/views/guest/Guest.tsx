@@ -255,6 +255,7 @@ export function Guest({ code, nickname, onExit }: Props) {
       {upNext && (
         <div
           key={upNext.id}
+          data-testid="upnext-callout"
           className="up-next-pulse mx-6 mt-4 flex items-center gap-3 rounded-[4px] border-[3px] border-gold-500 bg-gold-500/10 p-3"
           role="status"
         >
@@ -303,6 +304,7 @@ export function Guest({ code, nickname, onExit }: Props) {
           nickname={nickname}
           onAddSong={() => setSearchOpen(true)}
           onReadd={addToQueue}
+          onSuggestionAdd={addToQueue}
         />
       </main>
 
@@ -318,6 +320,7 @@ export function Guest({ code, nickname, onExit }: Props) {
         <div
           className="crt fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-[4px] border-[3px] border-cab-700 px-5 py-3 text-sm font-semibold text-cyan-500"
           role="status"
+          data-testid="toast"
         >
           {toast}
         </div>

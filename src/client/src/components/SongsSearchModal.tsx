@@ -38,13 +38,18 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label="Add songs"
+      data-testid="search-modal"
     >
       <div className="panel crt flex max-h-[85vh] w-[560px] max-w-full flex-col p-5">
         <div className="flex items-baseline justify-between">
-          <h2 className="font-press text-[13px] text-gold-500 [text-shadow:2px_2px_0_#5C4A0E]">
+          <h2
+            data-testid="search-heading"
+            className="font-press text-[13px] text-gold-500 [text-shadow:2px_2px_0_#5C4A0E]"
+          >
             Add songs
           </h2>
           <button
+            data-testid="search-btn-close"
             onClick={onClose}
             aria-label="Close search"
             className="btn btn-ghost h-9 w-9 p-0 text-arc-500"
@@ -55,6 +60,7 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
 
         <div className="relative mt-3 mb-3">
           <input
+            data-testid="search-input"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -64,6 +70,7 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
           />
           {query && (
             <button
+              data-testid="search-btn-clear"
               onClick={() => {
                 setQuery("");
                 setResults([]);
@@ -77,14 +84,18 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          {searching && <p className="mb-3 text-xs text-arc-500">Searching…</p>}
+          {searching && (
+            <p data-testid="search-status-searching" className="mb-3 text-xs text-arc-500">
+              Searching…
+            </p>
+          )}
           {!query && !searching && (
-            <p className="text-sm text-arc-500">
+            <p data-testid="search-empty" className="text-sm text-arc-500">
               Search a song or paste a YouTube link.
             </p>
           )}
           {query && !searching && results.length === 0 && (
-            <p className="text-sm text-arc-500">
+            <p data-testid="search-no-results" className="text-sm text-arc-500">
               No results — paste a YouTube link instead.
             </p>
           )}
@@ -93,6 +104,7 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
             return (
               <div
                 key={result.videoId}
+                data-testid={`search-row-${result.videoId}`}
                 className="mb-2.5 grid grid-cols-[72px_1fr_auto] items-center gap-2.5 rounded-[4px] border-2 border-cab-700 bg-cab-800 p-2"
               >
                 <img
@@ -108,6 +120,7 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
                   <Check role="img" aria-label="Added" className="h-4 w-4 text-cyan-500" />
                 ) : (
                   <button
+                    data-testid={`search-btn-add-${result.videoId}`}
                     onClick={() => onAdd(result)}
                     className="btn btn-primary px-2.5 py-2.5 text-[8px]"
                     aria-label={`Add ${result.title} to queue`}
