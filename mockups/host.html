@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taraoke — Host view (faceplate)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Hanken+Grotesk:wght@400;500;600;700&family=Doto:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gabi-900:#171021; --gabi-800:#221831; --gabi-700:#2F2342;
+    --beter-100:#FBF6EC; --beter-500:#B8AFC4;
+    --siga-500:#FF4B33; --siga-700:#C22F1E;
+    --liwanag-400:#4FD9EB; --ilaw-400:#FFC145;
+    --r-sm:6px; --r-md:12px; --r-lg:20px;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{
+    background:var(--gabi-900); color:var(--beter-100);
+    font-family:"Hanken Grotesk",sans-serif; font-size:16px; line-height:1.45;
+    min-height:100vh; display:flex; flex-direction:column;
+  }
+  .display{font-family:"Bowlby One SC",cursive; text-transform:uppercase; letter-spacing:.02em}
+  .led{
+    font-family:"Doto",sans-serif; font-weight:900; letter-spacing:.08em;
+    font-variant-numeric:tabular-nums; text-transform:uppercase;
+  }
+
+  /* ── LED marquee ─────────────────────────────── */
+  .marquee{
+    margin:16px 24px 0; padding:10px 20px;
+    background:#0E0A16; border:1px solid var(--gabi-700); border-radius:var(--r-md);
+    box-shadow:inset 0 2px 12px rgba(0,0,0,.7), 0 0 18px rgba(255,75,51,.25);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .marquee .led{font-size:22px}
+  .marquee .brand{color:var(--siga-500); text-shadow:0 0 14px rgba(255,75,51,.8)}
+  .marquee .code{color:var(--liwanag-400); text-shadow:0 0 14px rgba(79,217,235,.7)}
+  .marquee .clock{color:var(--ilaw-400); text-shadow:0 0 12px rgba(255,193,69,.6)}
+
+  /* ── faceplate grid ──────────────────────────── */
+  .faceplate{
+    flex:1; display:grid; grid-template-columns:300px 1fr 340px; gap:20px;
+    padding:20px 24px; align-items:stretch; min-height:0;
+  }
+  .panel{
+    background:var(--gabi-800); border:1px solid var(--gabi-700);
+    border-radius:var(--r-lg); padding:20px;
+  }
+
+  /* join card */
+  .join h2{font-size:1.5rem; margin-bottom:14px}
+  .join .qr{
+    background:#0E0A16; border:1px solid var(--gabi-700); border-radius:var(--r-md);
+    padding:18px; display:flex; justify-content:center;
+    box-shadow:inset 0 2px 10px rgba(0,0,0,.7), 0 0 16px rgba(79,217,235,.2);
+  }
+  .join .code{
+    font-size:40px; text-align:center; margin:14px 0 4px;
+    color:var(--liwanag-400); text-shadow:0 0 14px rgba(79,217,235,.7);
+  }
+  .join .hint{text-align:center; color:var(--beter-500); font-size:.875rem}
+  .people{margin-top:18px; display:flex; flex-wrap:wrap; gap:8px}
+  .chip{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--gabi-700); border-radius:999px; padding:5px 12px;
+    font-size:.8125rem; font-weight:600;
+  }
+  .chip .dot{width:8px;height:8px;border-radius:50%}
+
+  /* player */
+  .player{display:flex; flex-direction:column; gap:14px}
+  .screen{
+    aspect-ratio:16/9; border-radius:var(--r-md); position:relative; overflow:hidden;
+    background:
+      radial-gradient(120% 90% at 50% 0%, #3A2A55 0%, #1D1430 55%, #120C1E 100%);
+    border:1px solid var(--gabi-700);
+    box-shadow:0 0 22px rgba(79,217,235,.18);
+  }
+  .screen .pause{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  }
+  .screen .pause span{
+    width:64px;height:64px;border-radius:50%;
+    background:rgba(23,16,33,.55); border:1px solid rgba(251,246,236,.25);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .screen .pause svg{width:22px;height:22px;fill:var(--beter-100)}
+  .screen .karaoke-note{
+    position:absolute; left:16px; bottom:16px; padding:6px 12px;
+    background:rgba(14,10,22,.7); border-radius:999px;
+    font-size:.75rem; font-weight:600; color:var(--beter-500);
+  }
+  .onair{
+    position:absolute; top:16px; right:16px; display:flex; align-items:center; gap:8px;
+    padding:6px 12px; background:rgba(23,16,33,.7); border-radius:999px;
+    font-size:.75rem; font-weight:700; letter-spacing:.12em; color:var(--siga-500);
+  }
+  .onair i{width:8px;height:8px;border-radius:50%;background:var(--siga-500);box-shadow:0 0 8px var(--siga-500)}
+  .np-meta{display:flex; align-items:baseline; justify-content:space-between; gap:12px}
+  .np-title{font-size:1.25rem; font-weight:600}
+  .np-title small{display:block; font-size:.8125rem; font-weight:500; color:var(--beter-500)}
+  .np-clock{font-size:28px; color:var(--ilaw-400); text-shadow:0 0 12px rgba(255,193,69,.55)}
+  .bar{height:6px; border-radius:999px; background:var(--gabi-700); overflow:hidden}
+  .bar i{display:block; height:100%; width:38%; background:var(--liwanag-400); box-shadow:0 0 10px rgba(79,217,235,.8)}
+
+  /* queue */
+  .queue h2{font-size:1.25rem; margin-bottom:14px; display:flex; justify-content:space-between; align-items:baseline}
+  .queue h2 .count{color:var(--beter-500); font-family:"Hanken Grotesk"; font-size:.875rem; font-weight:500}
+  .qcard{
+    display:grid; grid-template-columns:44px 96px 1fr auto; gap:12px; align-items:center;
+    background:var(--gabi-800); border:1px solid var(--gabi-700);
+    border-radius:var(--r-md); padding:12px; margin-bottom:10px;
+  }
+  .qcard.playing{
+    border-color:var(--liwanag-400);
+    box-shadow:0 0 14px rgba(79,217,235,.35);
+  }
+  .qnum{font-size:26px; color:var(--beter-500)}
+  .qcard.playing .qnum{color:var(--liwanag-400); text-shadow:0 0 10px rgba(79,217,235,.8)}
+  .qthumb{width:96px; aspect-ratio:16/9; border-radius:var(--r-sm)}
+  .qtitle{font-weight:600; line-height:1.25}
+  .qtitle small{display:block; font-weight:500; font-size:.75rem; color:var(--beter-500); margin-top:2px}
+  .grip{color:var(--beter-500); font-size:1rem; letter-spacing:2px}
+  .qcard.done{opacity:.45}
+
+  /* transport */
+  .transport{
+    display:flex; align-items:center; justify-content:center; gap:20px;
+    padding:18px 24px 22px;
+  }
+  .tbtn{
+    width:52px; height:52px; border-radius:50%; border:none; cursor:pointer;
+    background:var(--gabi-800); border:1px solid var(--gabi-700);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 2px 0 rgba(251,246,236,.08), 0 4px 10px rgba(0,0,0,.5);
+  }
+  .tbtn svg{width:20px;height:20px;fill:var(--beter-100)}
+  .tbtn.big{
+    width:68px; height:68px; background:var(--siga-500); border-color:transparent;
+    box-shadow:inset 0 3px 0 rgba(251,246,236,.25), 0 6px 18px rgba(255,75,51,.45);
+  }
+  .tbtn.big svg{fill:var(--beter-100); width:26px; height:26px}
+  .tbtn:active{transform:translateY(2px)}
+  .tpill{
+    border:none; cursor:pointer; font-family:inherit; font-weight:700; font-size:.9375rem;
+    padding:12px 22px; border-radius:999px; background:var(--gabi-800);
+    color:var(--beter-100); border:1px solid var(--gabi-700); margin-left:12px;
+  }
+  .tpill.danger{color:var(--siga-500); border-color:rgba(255,75,51,.5)}
+</style>
+</head>
+<body>
+
+  <header class="marquee" aria-label="Room status">
+    <span class="led brand">★ Taraoke ★</span>
+    <span class="led code">TARA-4F2K</span>
+    <span class="led clock">03:45</span>
+  </header>
+
+  <main class="faceplate">
+
+    <section class="panel join" aria-label="Join the room">
+      <h2 class="display">Join the room</h2>
+      <div class="qr" aria-hidden="true">
+        <svg width="150" height="150" viewBox="0 0 29 29" shape-rendering="crispEdges">
+          <rect width="29" height="29" fill="#0E0A22"/>
+          <g fill="#4FD9EB">
+            <path d="M0 0h7v7H0zM22 0h7v7h-7zM0 22h7v7H0z" fill="none" stroke="#4FD9EB" stroke-width="1"/>
+            <rect x="2" y="2" width="3" height="3"/>
+            <rect x="24" y="2" width="3" height="3"/>
+            <rect x="2" y="24" width="3" height="3"/>
+            <rect x="9" y="1" width="2" height="2"/><rect x="13" y="0" width="2" height="3"/>
+            <rect x="17" y="2" width="2" height="2"/><rect x="10" y="5" width="3" height="2"/>
+            <rect x="15" y="6" width="2" height="2"/><rect x="1" y="10" width="2" height="2"/>
+            <rect x="5" y="9" width="2" height="3"/><rect x="8" y="10" width="2" height="2"/>
+            <rect x="12" y="9" width="3" height="2"/><rect x="18" y="10" width="2" height="2"/>
+            <rect x="22" y="9" width="2" height="3"/><rect x="26" y="11" width="2" height="2"/>
+            <rect x="0" y="14" width="3" height="2"/><rect x="5" y="14" width="2" height="2"/>
+            <rect x="9" y="13" width="2" height="3"/><rect x="14" y="14" width="2" height="2"/>
+            <rect x="19" y="13" width="2" height="2"/><rect x="23" y="14" width="3" height="2"/>
+            <rect x="27" y="14" width="2" height="2"/><rect x="2" y="17" width="2" height="2"/>
+            <rect x="6" y="18" width="2" height="2"/><rect x="10" y="17" width="3" height="2"/>
+            <rect x="15" y="18" width="2" height="2"/><rect x="20" y="17" width="2" height="3"/>
+            <rect x="25" y="18" width="2" height="2"/><rect x="9" y="21" width="2" height="2"/>
+            <rect x="13" y="22" width="2" height="2"/><rect x="17" y="21" width="3" height="2"/>
+            <rect x="22" y="22" width="2" height="2"/><rect x="26" y="22" width="2" height="2"/>
+            <rect x="10" y="25" width="2" height="2"/><rect x="13" y="26" width="2" height="2"/>
+            <rect x="19" y="24" width="2" height="2"/><rect x="23" y="26" width="2" height="2"/>
+            <rect x="16" y="26" width="2" height="2"/>
+          </g>
+        </svg>
+      </div>
+      <p class="led code" style="font-family:'Doto'">TARA-4F2K</p>
+      <p class="hint">Scan the QR or type the room code</p>
+      <div class="people">
+        <span class="chip"><span class="dot" style="background:var(--siga-500)"></span>Ivan</span>
+        <span class="chip"><span class="dot" style="background:var(--liwanag-400)"></span>Bea</span>
+        <span class="chip"><span class="dot" style="background:var(--ilaw-400)"></span>Carlo</span>
+        <span class="chip"><span class="dot" style="background:#9B7BFF"></span>Nina</span>
+      </div>
+    </section>
+
+    <section class="panel player" aria-label="Now playing">
+      <div class="screen">
+        <span class="onair"><i></i>ON AIR</span>
+        <div class="pause" aria-hidden="true"><span>
+          <svg viewBox="0 0 24 24"><path d="M8 5h3v14H8zM13 5h3v14h-3z"/></svg>
+        </span></div>
+        <span class="karaoke-note">Karaoke Version · lyrics on screen</span>
+      </div>
+      <div class="np-meta">
+        <p class="np-title">Ang Huling El Bimbo
+          <small>Eraserheads · Karaoke Version · added by Bea</small></p>
+        <span class="led np-clock">03:45</span>
+      </div>
+      <div class="bar" role="progressbar" aria-valuenow="38"><i></i></div>
+    </section>
+
+    <section class="panel queue" aria-label="Song queue">
+      <h2 class="display">Queue <span class="count">4 songs</span></h2>
+      <div class="qcard playing">
+        <span class="led qnum">1</span>
+        <div class="qthumb" style="background:linear-gradient(135deg,#3A2A55,#7A3B8F)"></div>
+        <p class="qtitle">Ang Huling El Bimbo<small>Bea · Karaoke Version</small></p>
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+      </div>
+      <div class="qcard">
+        <span class="led qnum">2</span>
+        <div class="qthumb" style="background:linear-gradient(135deg,#4A2038,#C22F1E)"></div>
+        <p class="qtitle">Torete<small>Carlo · Karaoke Version</small></p>
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+      </div>
+      <div class="qcard">
+        <span class="led qnum">3</span>
+        <div class="qthumb" style="background:linear-gradient(135deg,#20304A,#2C6E9B)"></div>
+        <p class="qtitle">Kahit Maputi Na Ang Buhok Ko<small>Nina · videoke star</small></p>
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+      </div>
+      <div class="qcard">
+        <span class="led qnum">4</span>
+        <div class="qthumb" style="background:linear-gradient(135deg,#4E4420,#FFC145)"></div>
+        <p class="qtitle">Harana<small>Ivan · Karaoke Version</small></p>
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="transport" aria-label="Player controls">
+    <button class="tbtn" aria-label="Previous song">
+      <svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14l-11-7z"/></svg>
+    </button>
+    <button class="tbtn big" aria-label="Pause">
+      <svg viewBox="0 0 24 24"><path d="M8 5h3v14H8zM13 5h3v14h-3z"/></svg>
+    </button>
+    <button class="tbtn" aria-label="Next — play the next song">
+      <svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>
+    </button>
+    <button class="tpill danger">End room</button>
+  </footer>
+
+</body>
+</html>
