@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import type { PublicRoomState, QueueItem } from "../../../shared/types";
+import type {
+  GuestAction,
+  PublicRoomState,
+  QueueItem,
+} from "../../../shared/types";
 import type { SearchResult } from "../../../server/youtube";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { fetchSongs } from "../lib/search";
@@ -55,6 +59,8 @@ export function Host({ code, token, onExit }: Props) {
   const [muted, setMuted] = useState(true);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [joinToast, setJoinToast] = useState<string | null>(null);
+  const joinToastTimer = useRef<number | undefined>(undefined);
   const mutedRef = useRef(true);
   const playerRef = useRef<YTPlayer | null>(null);
   const playingRef = useRef(false);
@@ -80,17 +86,56 @@ export function Host({ code, token, onExit }: Props) {
       if (!res.ok) onExit();
     });
     const onRoomState = (s: PublicRoomState) => setState(s);
+    const onParticipantJoined = (nickname: string) => {
+      setJoinToast(`${nickname} joined the room`);
+      window.clearTimeout(joinToastTimer.current);
+      joinToastTimer.current = window.setTimeout(() => setJoinToast(null), 3000);
+    };
+    const onPlayerControl = (action: GuestAction) => {
+      if (action.type === "next") {
+        socket.emit("host:action", token, { type: "next" });
+        return;
+      }
+      const player = playerRef.current;
+      if (!player || !readyRef.current) return;
+      if (action.type === "play") player.playVideo();
+      else if (action.type === "pause") player.pauseVideo();
+      else if (action.type === "seek") {
+        player.seekTo(Math.max(0, action.positionSec));
+      }
+    };
     socket.on("roomState", onRoomState);
+    socket.on("participantJoined", onParticipantJoined);
+    socket.on("playerControl", onPlayerControl);
     return () => {
       socket.off("roomState", onRoomState);
+      socket.off("participantJoined", onParticipantJoined);
+      socket.off("playerControl", onPlayerControl);
     };
   }, [code, token, onExit]);
 
   useEffect(() => {
-    QRCode.toDataURL(`${window.location.origin}/r/${code}`, {
-      margin: 1,
-      color: { dark: "#3EF0FF", light: "#05030C" },
-    })
+    const buildUrl = async (): Promise<string> => {
+      const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(
+        window.location.hostname,
+      );
+      if (!local) return `${window.location.origin}/r/${code}`;
+      try {
+        const res = await fetch("/api/lan");
+        const { ip } = (await res.json()) as { ip: string | null };
+        if (ip) return `http://${ip}:${window.location.port}/r/${code}`;
+      } catch {
+        // fall through to origin
+      }
+      return `${window.location.origin}/r/${code}`;
+    };
+    buildUrl()
+      .then((url) =>
+        QRCode.toDataURL(url, {
+          margin: 1,
+          color: { dark: "#3EF0FF", light: "#05030C" },
+        }),
+      )
       .then(setQrUrl)
       .catch(() => {});
   }, [code]);
@@ -698,6 +743,15 @@ export function Host({ code, token, onExit }: Props) {
               })}
             </div>
           </div>
+        </div>
+      )}
+
+      {joinToast && (
+        <div
+          className="crt fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-[4px] border-[3px] border-cyan-500 px-5 py-3 text-sm font-semibold text-cyan-500 [box-shadow:0_0_14px_rgba(62,240,255,.4)]"
+          role="status"
+        >
+          {joinToast}
         </div>
       )}
 

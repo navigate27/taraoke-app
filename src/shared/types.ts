@@ -52,9 +52,16 @@ export type HostAction =
   | { type: "reorder"; itemId: string; toIndex: number }
   | { type: "clear" };
 
+export type GuestAction =
+  | { type: "play" }
+  | { type: "pause" }
+  | { type: "seek"; positionSec: number }
+  | { type: "next" };
+
 export type ServerToClientEvents = {
   roomState: (state: PublicRoomState) => void;
   playerState: (state: PlayerState) => void;
+  playerControl: (action: GuestAction, by: string) => void;
   participantJoined: (nickname: string) => void;
   participantLeft: (nickname: string) => void;
   error: (message: string) => void;
@@ -77,6 +84,7 @@ export type ClientToServerEvents = {
   ) => void;
   "host:action": (token: string, action: HostAction) => void;
   "player:state": (token: string, state: PlayerState) => void;
+  "guest:action": (action: GuestAction) => void;
   "queue:add": (
     item: {
       videoId: string;

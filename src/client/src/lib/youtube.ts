@@ -2,6 +2,7 @@
 
 export interface YTPlayer {
   loadVideoById(videoId: string): void;
+  cueVideoById(videoId: string): void;
   playVideo(): void;
   pauseVideo(): void;
   mute(): void;

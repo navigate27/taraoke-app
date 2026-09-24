@@ -42,7 +42,8 @@ anyone who has ever pointed a remote at a videoke machine.
 | **Guest** | Phone | Scans QR, picks a nickname, searches and queues songs |
 
 One device can be both host screen and player (e.g., a laptop on the TV speaker).
-Guests' phones are controllers, not players (v1).
+Guests' phones are synced mirrors + controllers: they show the same video (muted by
+default) and can control playback only for songs they added.
 
 ## 5. Features
 
@@ -88,8 +89,16 @@ Guests' phones are controllers, not players (v1).
   - State events (`onStateChange`) → auto-advance to the next queue item on `ENDED`.
   - Player params: `rel=0` (hide related videos), fullscreen support, minimal chrome.
 - Video plays on the **host device**; audio goes to the room's speakers.
-- Guest phones show a synced "now playing" panel (title, progress) — muted, no video
-  playback on guest devices in v1 (keeps A/V in sync trivially and avoids echo).
+- Guest phones mirror the video **in sync** via the same IFrame API, **muted by
+  default**. Each guest can unmute their own device locally — per-guest audio only,
+  it never affects the room or other devices. The host broadcast is the source of
+  truth (guests re-seek when drift exceeds ~2s).
+- Guest transport controls are gated by song ownership:
+  - Song **not** added by this guest → local mute toggle only.
+  - Song **added by this guest** → full transport: play/pause, -10/+10 seek, skip.
+    These actions are relayed through the host's player (the host stays the source of
+    truth); the server validates ownership (nickname vs `nowPlaying.addedBy`) before
+    relaying.
 - Known tradeoff: **YouTube ads may play between songs** on non-Premium accounts.
   Acceptable for MVP; documented as a known limitation.
 
@@ -120,12 +129,15 @@ Guests' phones are controllers, not players (v1).
 | Realtime | WebSockets (Socket.io or Supabase Realtime) | Room events: `queue_updated`, `player_state`, `participant_join/leave` |
 | Backend | Node (host-persisted room state) | Rooms held in memory/Redis; no DB required for MVP |
 | Song search | YouTube Data API v3 (server-side proxy) | Caches popular queries to conserve quota |
-| Player | YouTube IFrame Player API | Only on host view |
+| Player | YouTube IFrame Player API | Host view (authoritative) + guest view (synced, muted by default) |
 | Auth | None | Room code = guest auth; host secret token = host auth |
 
 **Sync model:** the host device is the playback source of truth; it broadcasts
-`player_state` (playing/paused, position) that guests render read-only. The server owns
-the queue; the host's control actions are just privileged queue mutations.
+`player_state` (playing/paused, position) that guest devices follow with a >2s drift
+re-seek. The server owns the queue; the host's control actions are just privileged queue
+mutations. Guests may control playback only while their own song is playing: their
+actions are validated server-side (nickname vs `nowPlaying.addedBy`) and relayed as
+`player:control` events that the host's player executes.
 
 **Quota note:** free YouTube API quota ≈ 100 searches/day. Mitigations: result caching,
 curated pre-seeded "karaoke staples" list shipped with the app, URL-paste fallback.

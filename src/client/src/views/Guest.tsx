@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import type { PublicRoomState } from "../../../shared/types";
+import type {
+  GuestAction,
+  PlayerState,
+  PublicRoomState,
+} from "../../../shared/types";
 import type { SearchResult } from "../../../server/youtube";
 import { fetchSongs } from "../lib/search";
 import { socket } from "../lib/socket";
+import { loadYouTubeApi, YTEvents, type YTPlayer } from "../lib/youtube";
 
 interface Props {
   code: string;
@@ -21,15 +26,56 @@ export function Guest({ code, nickname, onExit }: Props) {
   const [searching, setSearching] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [muted, setMuted] = useState(true);
   const toastTimer = useRef<number | undefined>(undefined);
+  const playerRef = useRef<YTPlayer | null>(null);
+  const readyRef = useRef(false);
+  const localPlayingRef = useRef(false);
+  const mutedRef = useRef(true);
+  const lastLoadedRef = useRef<string | null>(null);
+  const pendingRef = useRef<{ videoId: string; playing: boolean } | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     socket.emit("room:join", code, nickname, null, (res) => {
       if (!res.ok) onExit();
     });
     const onRoomState = (s: PublicRoomState) => setState(s);
-    const onPlayerState = (p: { positionSec: number; playing: boolean }) =>
+    const onPlayerState = (p: PlayerState) => {
       setPosition(p.positionSec);
+      if (!p.videoId) {
+        lastLoadedRef.current = null;
+        localPlayingRef.current = false;
+        setPlaying(false);
+        return;
+      }
+      if (p.videoId !== lastLoadedRef.current) {
+        lastLoadedRef.current = p.videoId;
+        const player = playerRef.current;
+        if (player && readyRef.current) {
+          if (p.playing) player.loadVideoById(p.videoId);
+          else player.cueVideoById(p.videoId);
+        } else {
+          pendingRef.current = { videoId: p.videoId, playing: p.playing };
+        }
+        localPlayingRef.current = p.playing;
+        setPlaying(p.playing);
+        return;
+      }
+      const player = playerRef.current;
+      if (!player || !readyRef.current) return;
+      const local = player.getCurrentTime() || 0;
+      if (p.playing && Math.abs(local - p.positionSec) > 2) {
+        player.seekTo(p.positionSec);
+      }
+      if (p.playing !== localPlayingRef.current) {
+        localPlayingRef.current = p.playing;
+        setPlaying(p.playing);
+        if (p.playing) player.playVideo();
+        else player.pauseVideo();
+      }
+    };
     socket.on("roomState", onRoomState);
     socket.on("playerState", onPlayerState);
     return () => {
@@ -38,6 +84,55 @@ export function Guest({ code, nickname, onExit }: Props) {
       socket.emit("room:leave");
     };
   }, [code, nickname, onExit]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let player: YTPlayer | null = null;
+    loadYouTubeApi().then((YT) => {
+      if (cancelled || !containerRef.current) return;
+      const el = document.createElement("div");
+      containerRef.current.appendChild(el);
+      player = new YT.Player(el, {
+        playerVars: {
+          rel: 0,
+          controls: 0,
+          disablekb: 1,
+          modestbranding: 1,
+          iv_load_policy: 3,
+          fs: 0,
+          playsinline: 1,
+          autoplay: 1,
+          mute: 1,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: () => {
+            readyRef.current = true;
+            const pending = pendingRef.current;
+            if (pending) {
+              if (pending.playing) player?.loadVideoById(pending.videoId);
+              else player?.cueVideoById(pending.videoId);
+              pendingRef.current = null;
+            }
+          },
+          onStateChange: (e) => {
+            if (e.data === YTEvents.ENDED) return;
+            localPlayingRef.current = e.data === YTEvents.PLAYING;
+            setPlaying(e.data === YTEvents.PLAYING);
+          },
+        },
+      }) as YTPlayer;
+      playerRef.current = player;
+    });
+    return () => {
+      cancelled = true;
+      player?.destroy();
+      playerRef.current = null;
+      readyRef.current = false;
+      pendingRef.current = null;
+      if (containerRef.current) containerRef.current.innerHTML = "";
+    };
+  }, []);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -63,6 +158,29 @@ export function Guest({ code, nickname, onExit }: Props) {
     toastTimer.current = window.setTimeout(() => setToast(null), 3000);
   }
 
+  function toggleMute() {
+    const player = playerRef.current;
+    if (!player) return;
+    if (mutedRef.current) {
+      player.unMute();
+      mutedRef.current = false;
+      setMuted(false);
+    } else {
+      player.mute();
+      mutedRef.current = true;
+      setMuted(true);
+    }
+  }
+
+  function emitAction(action: GuestAction) {
+    socket.emit("guest:action", action);
+  }
+
+  function seekBy(delta: number) {
+    const current = playerRef.current?.getCurrentTime() || position;
+    emitAction({ type: "seek", positionSec: Math.max(0, current + delta) });
+  }
+
   function addToQueue(result: SearchResult) {
     socket.emit(
       "queue:add",
@@ -85,6 +203,7 @@ export function Guest({ code, nickname, onExit }: Props) {
 
   const nowPlaying = state?.nowPlaying ?? null;
   const queue = state?.queue ?? [];
+  const ownsCurrent = !!nowPlaying && nowPlaying.addedBy === nickname;
   const addedVideoIds = new Set([
     ...(nowPlaying ? [nowPlaying.videoId] : []),
     ...queue.map((q) => q.videoId),
@@ -111,6 +230,69 @@ export function Guest({ code, nickname, onExit }: Props) {
           </span>
         ) : null}
       </header>
+
+      <section
+        className={`mx-4 mt-3.5 ${nowPlaying ? "" : "hidden"}`}
+        aria-label="Now playing video"
+      >
+        <div className="crt scanlines relative aspect-video overflow-hidden rounded-[4px] border-[3px] border-cab-700 [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:border-0">
+          <div ref={containerRef} className="absolute inset-0" />
+        </div>
+        <div
+          className="mt-2.5 flex items-center justify-center gap-3"
+          aria-label="Player controls"
+        >
+          <button
+            onClick={() => seekBy(-10)}
+            disabled={!ownsCurrent}
+            className="btn btn-ghost h-11 px-3 text-[9px] disabled:opacity-30"
+            aria-label="Back 10 seconds"
+          >
+            -10
+          </button>
+          <button
+            onClick={() => emitAction({ type: playing ? "pause" : "play" })}
+            disabled={!ownsCurrent}
+            className="btn btn-primary h-13 w-13 text-[12px] disabled:opacity-30"
+            aria-label={playing ? "Pause" : "Play"}
+          >
+            {playing ? "❚❚" : "▶"}
+          </button>
+          <button
+            onClick={() => seekBy(10)}
+            disabled={!ownsCurrent}
+            className="btn btn-ghost h-11 px-3 text-[9px] disabled:opacity-30"
+            aria-label="Forward 10 seconds"
+          >
+            +10
+          </button>
+          <button
+            onClick={() => emitAction({ type: "next" })}
+            disabled={!ownsCurrent}
+            className="btn btn-ghost h-11 w-11 disabled:opacity-30"
+            aria-label="Skip to the next song"
+          >
+            ⏭
+          </button>
+          <button
+            onClick={toggleMute}
+            title={muted ? "Sound off — tap to unmute" : "Sound on — tap to mute"}
+            aria-label={muted ? "Unmute" : "Mute"}
+            className={`btn btn-ghost h-11 w-11 text-[12px] ${
+              muted
+                ? "text-arc-500 opacity-70"
+                : "text-cyan-500 [box-shadow:5px_5px_0_#05030C,0_0_12px_rgba(62,240,255,.45)] [text-shadow:0_0_8px_rgba(62,240,255,.7)]"
+            }`}
+          >
+            ♪
+          </button>
+        </div>
+        {!ownsCurrent && nowPlaying && (
+          <p className="mt-2 text-center text-[11px] text-arc-500">
+            Transport unlocks when your song is playing
+          </p>
+        )}
+      </section>
 
       {upNext && (
         <div

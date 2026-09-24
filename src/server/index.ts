@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import os from "node:os";
 import path from "node:path";
 import { existsSync } from "node:fs";
 import Fastify from "fastify";
@@ -15,6 +16,7 @@ import fastifyStatic from "@fastify/static";
 import { Server } from "socket.io";
 import type {
   ClientToServerEvents,
+  GuestAction,
   HostAction,
   PlayerState,
   QueueItem,
@@ -44,6 +46,19 @@ if (existsSync(distDir)) {
 }
 
 app.get("/api/health", async () => ({ ok: true }));
+
+app.get("/api/lan", async () => {
+  const virtual = /^(lo|docker|br-|veth|virbr|tailscale|zt|awdl|bridge)/;
+  for (const [name, nets] of Object.entries(os.networkInterfaces())) {
+    if (virtual.test(name)) continue;
+    for (const net of nets ?? []) {
+      if (net.family === "IPv4" && !net.internal) {
+        return { ip: net.address };
+      }
+    }
+  }
+  return { ip: null };
+});
 
 app.get<{ Querystring: { q?: string } }>("/api/search", async (req, reply) => {
   const q = (req.query.q ?? "").trim();
@@ -99,7 +114,7 @@ io.on("connection", (socket) => {
     }
     const cleanNickname = nickname.trim().slice(0, 20);
     if (!cleanNickname) {
-      callback({ ok: false, error: "Enter your name first" });
+      callback({ ok: false, error: "Hostname required" });
       return;
     }
     if (hostToken && hostToken === room.hostToken) {
@@ -116,8 +131,10 @@ io.on("connection", (socket) => {
     socket.data.roomCode = room.code;
     socket.data.nickname = cleanNickname;
     callback({ ok: true });
-    io.to(room.code).emit("participantJoined", cleanNickname);
-    socket.emit("roomState", publicState(room));
+    if (!(hostToken && hostToken === room.hostToken)) {
+      io.to(room.code).emit("participantJoined", cleanNickname);
+    }
+    io.to(room.code).emit("roomState", publicState(room));
     socket.emit("playerState", {
       videoId: room.nowPlaying?.videoId ?? null,
       playing: false,
@@ -195,6 +212,16 @@ io.on("connection", (socket) => {
     if (!room || token !== room.hostToken) return;
     touchRoom(room);
     socket.to(code).emit("playerState", state);
+  });
+
+  socket.on("guest:action", (action: GuestAction) => {
+    const code = socket.data.roomCode;
+    const nickname = socket.data.nickname;
+    if (!code || !nickname) return;
+    const room = getRoom(code);
+    if (!room || room.nowPlaying?.addedBy !== nickname) return;
+    touchRoom(room);
+    io.to(code).emit("playerControl", action, nickname);
   });
 
   socket.on("disconnect", () => {
