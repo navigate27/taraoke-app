@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Home } from "./views/Home";
 import { Host, saveHost } from "./views/host/Host";
 import { Guest, saveGuest } from "./views/guest/Guest";
+import { ScoreLab } from "./views/ScoreLab";
 
 type Screen =
   | { view: "home"; joinCode: string | null }
@@ -16,6 +17,11 @@ function codeFromUrl(): string | null {
 }
 
 export default function App() {
+  // Scoring Lab dev page — standalone, no room, no server calls.
+  if (window.location.hash === "#/score-lab") {
+    return <ScoreLab />;
+  }
+
   const [screen, setScreen] = useState<Screen>({
     view: "home",
     joinCode: codeFromUrl(),
