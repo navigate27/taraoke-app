@@ -25,6 +25,7 @@ export interface Room {
   participants: Map<string, Participant>;
   queue: QueueItem[];
   nowPlaying: QueueItem | null;
+  history: QueueItem[];
   createdAt: number;
   lastActivityAt: number;
 }
@@ -33,7 +34,8 @@ export interface PublicRoomState {
   code: string;
   nowPlaying: QueueItem | null;
   queue: QueueItem[];
-  participants: { nickname: string }[];
+  history: QueueItem[];
+  participants: { nickname: string; isHost: boolean }[];
 }
 
 export interface PlayerState {

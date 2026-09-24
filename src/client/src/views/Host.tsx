@@ -6,8 +6,11 @@ import type {
   QueueItem,
 } from "../../../shared/types";
 import type { SearchResult } from "../../../server/youtube";
+import { Check, Volume2, VolumeX } from "pixelarticons/react";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { fetchSongs } from "../lib/search";
+import { ParticipantChips } from "../components/ParticipantChips";
+import { SongsSearchModal } from "../components/SongsSearchModal";
+import { buildJoinUrl } from "../lib/joinUrl";
 import { socket } from "../lib/socket";
 import {
   formatClock,
@@ -18,15 +21,15 @@ import {
 
 const HOST_KEY = "taraoke.host";
 
-export function saveHost(code: string, token: string): void {
-  localStorage.setItem(HOST_KEY, JSON.stringify({ code, token }));
+export function saveHost(code: string, token: string, name: string): void {
+  localStorage.setItem(HOST_KEY, JSON.stringify({ code, token, name }));
 }
 
 export function clearHost(): void {
   localStorage.removeItem(HOST_KEY);
 }
 
-export function loadHost(): { code: string; token: string } | null {
+export function loadHost(): { code: string; token: string; name?: string } | null {
   try {
     const parsed = JSON.parse(localStorage.getItem(HOST_KEY) ?? "");
     if (typeof parsed?.code === "string" && typeof parsed?.token === "string") {
@@ -41,18 +44,16 @@ export function loadHost(): { code: string; token: string } | null {
 interface Props {
   code: string;
   token: string;
+  nickname: string;
   onExit: () => void;
 }
 
-export function Host({ code, token, onExit }: Props) {
+export function Host({ code, token, nickname, onExit }: Props) {
   const [state, setState] = useState<PublicRoomState | null>(null);
   const [playing, setPlaying] = useState(false);
   const [remaining, setRemaining] = useState("--:--");
   const [progress, setProgress] = useState(0);
   const [qrUrl, setQrUrl] = useState("");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
   const [endConfirm, setEndConfirm] = useState(false);
   const [playNowItem, setPlayNowItem] = useState<QueueItem | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -82,7 +83,7 @@ export function Host({ code, token, onExit }: Props) {
   stateRef.current = state;
 
   useEffect(() => {
-    socket.emit("room:join", code, "Host", token, (res) => {
+    socket.emit("room:join", code, nickname, token, (res) => {
       if (!res.ok) onExit();
     });
     const onRoomState = (s: PublicRoomState) => setState(s);
@@ -112,24 +113,10 @@ export function Host({ code, token, onExit }: Props) {
       socket.off("participantJoined", onParticipantJoined);
       socket.off("playerControl", onPlayerControl);
     };
-  }, [code, token, onExit]);
+  }, [code, token, nickname, onExit]);
 
   useEffect(() => {
-    const buildUrl = async (): Promise<string> => {
-      const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(
-        window.location.hostname,
-      );
-      if (!local) return `${window.location.origin}/r/${code}`;
-      try {
-        const res = await fetch("/api/lan");
-        const { ip } = (await res.json()) as { ip: string | null };
-        if (ip) return `http://${ip}:${window.location.port}/r/${code}`;
-      } catch {
-        // fall through to origin
-      }
-      return `${window.location.origin}/r/${code}`;
-    };
-    buildUrl()
+    buildJoinUrl(code)
       .then((url) =>
         QRCode.toDataURL(url, {
           margin: 1,
@@ -219,27 +206,11 @@ export function Host({ code, token, onExit }: Props) {
   }, [token, state?.nowPlaying?.videoId]);
 
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-    setSearching(true);
-    const timer = setTimeout(async () => {
-      try {
-        setResults(await fetchSongs(query));
-      } catch {
-        setResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  useEffect(() => {
     function rowAt(clientY: number): HTMLElement | null {
       const rows = [
-        ...document.querySelectorAll<HTMLElement>('[aria-label="Song queue"] .min-h-0 > div'),
+        ...document.querySelectorAll<HTMLElement>(
+          '[aria-label="Song queue"] [data-next-list] > div',
+        ),
       ];
       for (const row of rows) {
         const rect = row.getBoundingClientRect();
@@ -255,7 +226,9 @@ export function Host({ code, token, onExit }: Props) {
       if (!ghost) {
         if (Math.hypot(e.clientX - pending.startX, e.clientY - pending.startY) < 6) return;
         const rows = [
-          ...document.querySelectorAll<HTMLElement>('[aria-label="Song queue"] .min-h-0 > div'),
+          ...document.querySelectorAll<HTMLElement>(
+            '[aria-label="Song queue"] [data-next-list] > div',
+          ),
         ];
         const row = rows[pending.index];
         if (!row) return;
@@ -356,15 +329,18 @@ export function Host({ code, token, onExit }: Props) {
         durationSec: result.durationSec ?? 0,
         thumbnail: result.thumbnail,
       },
-      (res) => {
-        if (!res.ok) setQuery("");
-      },
+      () => {},
     );
   }
 
   const queue = state?.queue ?? [];
+  const history = state?.history ?? [];
   const participants = state?.participants ?? [];
   const nowPlaying = state?.nowPlaying ?? null;
+  const addedVideoIds = new Set([
+    ...(nowPlaying ? [nowPlaying.videoId] : []),
+    ...queue.map((q) => q.videoId),
+  ]);
 
   queueRef.current = queue;
 
@@ -411,16 +387,7 @@ export function Host({ code, token, onExit }: Props) {
           <p className="coin-blink mt-3 text-center font-press text-[9px] text-gold-500">
             Insert coin to join
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {participants.map((p) => (
-              <span
-                key={p.nickname}
-                className="rounded-[4px] border-2 border-cab-700 bg-cab-700 px-2.5 py-1.5 text-xs font-bold text-arc-100"
-              >
-                {p.nickname}
-              </span>
-            ))}
-          </div>
+          <ParticipantChips participants={participants} />
           <button
             onClick={() => setEndConfirm(true)}
             className="btn btn-danger mt-auto px-4 py-3 text-[9px]"
@@ -524,13 +491,13 @@ export function Host({ code, token, onExit }: Props) {
               disabled={!nowPlaying}
               title={muted ? "Sound off — click to unmute" : "Sound on — click to mute"}
               aria-label={muted ? "Unmute" : "Mute"}
-              className={`btn btn-ghost h-14 w-14 text-[14px] disabled:opacity-30 ${
+              className={`btn btn-ghost h-14 w-14 disabled:opacity-30 ${
                 muted
                   ? "text-arc-500 opacity-70"
                   : "text-cyan-500 [box-shadow:5px_5px_0_#05030C,0_0_12px_rgba(62,240,255,.45)] [text-shadow:0_0_8px_rgba(62,240,255,.7)]"
               }`}
             >
-              ♪
+              {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
             </button>
           </div>
         </section>
@@ -556,10 +523,35 @@ export function Host({ code, token, onExit }: Props) {
           </button>
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-            {queue.length === 0 && (
-              <p className="text-sm text-arc-500">Queue is empty.</p>
+            {nowPlaying && (
+              <>
+                <p className="mt-1 mb-2 font-press text-[8px] tracking-[0.2em] text-red-500">
+                  Now playing
+                </p>
+                <div className="mb-3 grid grid-cols-[28px_80px_1fr] items-center gap-3 rounded-[4px] border-[3px] border-red-500 bg-cab-800 p-2.5">
+                  <span className="text-center font-press text-[10px] text-red-500">
+                    ♪
+                  </span>
+                  <img
+                    src={nowPlaying.thumbnail}
+                    alt=""
+                    className="aspect-video w-[80px] rounded-[4px] border-2 border-cab-700 object-cover"
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{nowPlaying.title}</p>
+                    <p className="text-xs text-arc-500">added by {nowPlaying.addedBy}</p>
+                  </div>
+                </div>
+              </>
             )}
-            {queue.map((item, index) => (
+            <p className="mb-2 font-press text-[8px] tracking-[0.2em] text-cyan-500">
+              Next
+            </p>
+            {queue.length === 0 && (
+              <p className="mb-3 text-sm text-arc-500">Queue is empty.</p>
+            )}
+            <div data-next-list>
+              {queue.map((item, index) => (
               <div
                 key={item.id}
                 onPointerDown={(e) => {
@@ -644,106 +636,42 @@ export function Host({ code, token, onExit }: Props) {
                   </button>
                 </div>
               </div>
-            ))}
+              ))}
+            </div>
+            {history.length > 0 && (
+              <>
+                <p className="mt-3 mb-2 font-press text-[8px] tracking-[0.2em] text-arc-500">
+                  Played
+                </p>
+                {history.map((item) => (
+                  <div
+                    key={item.id}
+                    className="mb-2.5 grid grid-cols-[28px_80px_1fr] items-center gap-3 rounded-[4px] border-[3px] border-cab-700 bg-cab-800 p-2.5 opacity-60"
+                  >
+                    <Check className="mx-auto h-4 w-4 text-arc-500" />
+                    <img
+                      src={item.thumbnail}
+                      alt=""
+                      className="aspect-video w-[80px] rounded-[4px] border-2 border-cab-700 object-cover"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{item.title}</p>
+                      <p className="text-xs text-arc-500">added by {item.addedBy}</p>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </section>
       </main>
 
       {searchOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-crt-000/80 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Add songs"
-        >
-          <div className="panel crt flex max-h-[85vh] w-[560px] max-w-full flex-col p-5">
-            <div className="flex items-baseline justify-between">
-              <h2 className="font-press text-[13px] text-gold-500 [text-shadow:2px_2px_0_#5C4A0E]">
-                Add songs
-              </h2>
-              <button
-                onClick={() => {
-                  setSearchOpen(false);
-                  setQuery("");
-                  setResults([]);
-                }}
-                aria-label="Close search"
-                className="btn btn-ghost h-9 w-9 p-0 text-[12px] text-arc-500"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="relative mt-3 mb-3">
-              <input
-                autoFocus
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search or paste a YouTube link"
-                aria-label="Search songs to add"
-                className="crt w-full rounded-[4px] border-[3px] border-cab-700 pr-9 pl-3 py-2.5 text-sm text-arc-100 outline-none placeholder:text-arc-500 focus:border-cyan-500"
-              />
-              {query && (
-                <button
-                  onClick={() => {
-                    setQuery("");
-                    setResults([]);
-                  }}
-                  aria-label="Clear search"
-                  className="absolute top-1/2 right-2 -translate-y-1/2 px-1.5 py-1 text-sm text-arc-500 hover:text-arc-100"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-              {searching && <p className="mb-3 text-xs text-arc-500">Searching…</p>}
-              {!query && !searching && (
-                <p className="text-sm text-arc-500">
-                  Search a song or paste a YouTube link.
-                </p>
-              )}
-              {query && !searching && results.length === 0 && (
-                <p className="text-sm text-arc-500">
-                  No results — paste a YouTube link instead.
-                </p>
-              )}
-              {results.map((result) => {
-                const added =
-                  (state?.nowPlaying?.videoId === result.videoId) ||
-                  queue.some((q) => q.videoId === result.videoId);
-                return (
-                  <div
-                    key={result.videoId}
-                    className="mb-2.5 grid grid-cols-[72px_1fr_auto] items-center gap-2.5 rounded-[4px] border-2 border-cab-700 bg-cab-800 p-2"
-                  >
-                    <img
-                      src={result.thumbnail}
-                      alt=""
-                      className="aspect-video w-[72px] rounded-[4px] border-2 border-cab-700 object-cover"
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold">{result.title}</p>
-                      <p className="text-[11px] text-arc-500">{result.channel}</p>
-                    </div>
-                    {added ? (
-                      <span className="font-press text-[8px] text-cyan-500">✓</span>
-                    ) : (
-                      <button
-                        onClick={() => addToQueue(result)}
-                        className="btn btn-primary px-2.5 py-2.5 text-[8px]"
-                        aria-label={`Add ${result.title} to queue`}
-                      >
-                        Add
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+        <SongsSearchModal
+          onClose={() => setSearchOpen(false)}
+          onAdd={addToQueue}
+          addedVideoIds={addedVideoIds}
+        />
       )}
 
       {joinToast && (

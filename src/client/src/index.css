@@ -10,6 +10,7 @@
   --color-neon-500: #e43bff;
   --color-neon-700: #5c0e72;
   --color-cyan-500: #3ef0ff;
+  --color-cyan-700: #0e5c68;
   --color-gold-500: #ffd23e;
   --color-red-500: #ff3d5a;
   --color-red-700: #7a1030;
@@ -73,6 +74,12 @@
     border-color: var(--color-neon-700);
     color: #fff;
     box-shadow: 5px 5px 0 var(--color-crt-000), 0 0 14px rgba(228, 59, 255, 0.4);
+  }
+  .btn-accent {
+    background: var(--color-cyan-500);
+    border-color: var(--color-cyan-700);
+    color: var(--color-crt-000);
+    box-shadow: 5px 5px 0 var(--color-crt-000), 0 0 14px rgba(62, 240, 255, 0.4);
   }
   .btn-ghost {
     background: var(--color-cab-800);

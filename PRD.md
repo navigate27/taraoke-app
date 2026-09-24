@@ -78,6 +78,8 @@ default) and can control playback only for songs they added.
   - Play / pause / skip current song.
   - Reorder, remove, or clear queue items.
 - Queue item states: `queued → playing → done` (and `skipped`).
+- Queue panel is organized top-to-bottom: **Now playing** → **Next** (the FIFO queue)
+  → **Previously played** (recently finished songs, newest first).
 - Each item shows: thumbnail, title, added-by nickname, duration.
 - Guests see the queue live and a **"You're up next!"** notification when their song is
   1 away.
@@ -93,6 +95,9 @@ default) and can control playback only for songs they added.
   default**. Each guest can unmute their own device locally — per-guest audio only,
   it never affects the room or other devices. The host broadcast is the source of
   truth (guests re-seek when drift exceeds ~2s).
+- The guest video panel is **hidden by default** (no iframe is mounted — saves
+  mobile data, CPU, and battery). A "Show video" toggle mounts the synced player
+  on demand; the sync broadcasts continue either way (they're only a few bytes/s).
 - Guest transport controls are gated by song ownership:
   - Song **not** added by this guest → local mute toggle only.
   - Song **added by this guest** → full transport: play/pause, -10/+10 seek, skip.

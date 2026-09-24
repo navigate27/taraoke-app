@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Home } from "./views/Home";
 import { Host, saveHost } from "./views/Host";
-import { Guest } from "./views/Guest";
+import { Guest, saveGuest } from "./views/Guest";
 
 type Screen =
   | { view: "home"; joinCode: string | null }
-  | { view: "host"; code: string; token: string }
+  | { view: "host"; code: string; token: string; nickname: string }
   | { view: "guest"; code: string; nickname: string };
 
 const ROOM_PATH = /\/r\/([A-Za-z0-9-]+)/;
@@ -32,6 +32,7 @@ export default function App() {
       <Host
         code={screen.code}
         token={screen.token}
+        nickname={screen.nickname}
         onExit={() => setScreen({ view: "home", joinCode: null })}
       />
     );
@@ -48,12 +49,13 @@ export default function App() {
   return (
     <Home
       joinCode={screen.joinCode}
-      onCreate={(code, token) => {
-        saveHost(code, token);
+      onCreate={(code, token, name) => {
+        saveHost(code, token, name);
         window.history.pushState(null, "", `/r/${code}`);
-        setScreen({ view: "host", code, token });
+        setScreen({ view: "host", code, token, nickname: name });
       }}
       onJoin={(code, nickname) => {
+        saveGuest(code, nickname);
         window.history.pushState(null, "", `/r/${code}`);
         setScreen({ view: "guest", code, nickname });
       }}

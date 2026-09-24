@@ -34,6 +34,7 @@ export function createRoom(): Room {
     participants: new Map(),
     queue: [],
     nowPlaying: null,
+    history: [],
     createdAt: Date.now(),
     lastActivityAt: Date.now(),
   };
@@ -58,8 +59,10 @@ export function publicState(room: Room): PublicRoomState {
     code: room.code,
     nowPlaying: room.nowPlaying,
     queue: room.queue,
+    history: room.history,
     participants: [...room.participants.values()].map((p) => ({
       nickname: p.nickname,
+      isHost: p.socketId === room.hostSocketId,
     })),
   };
 }
@@ -77,6 +80,7 @@ export function startPlayback(room: Room, item: QueueItem): void {
 export function advanceQueue(room: Room): void {
   if (room.nowPlaying) {
     room.nowPlaying.state = "done";
+    room.history.unshift(room.nowPlaying);
     room.nowPlaying = null;
   }
   const next = room.queue.shift();
@@ -98,7 +102,10 @@ export function applyHostAction(room: Room, action: HostAction): void {
     case "play-now": {
       const idx = room.queue.findIndex((q) => q.id === action.itemId);
       if (idx >= 0) {
-        if (room.nowPlaying) room.nowPlaying.state = "done";
+        if (room.nowPlaying) {
+          room.nowPlaying.state = "done";
+          room.history.unshift(room.nowPlaying);
+        }
         startPlayback(room, room.queue[idx]!);
         room.queue.splice(idx, 1);
       }

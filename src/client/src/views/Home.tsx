@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { socket } from "../lib/socket";
-import { loadHost } from "./Host";
+import { clearGuest, loadGuest, saveGuest } from "./Guest";
+import { clearHost, loadHost } from "./Host";
 
 interface Props {
   joinCode: string | null;
-  onCreate: (code: string, token: string) => void;
+  onCreate: (code: string, token: string, name: string) => void;
   onJoin: (code: string, nickname: string) => void;
 }
 
 export function Home({ joinCode, onCreate, onJoin }: Props) {
-  const [tab, setTab] = useState<"host" | "join">(joinCode ? "join" : "host");
+  const savedGuest = loadGuest();
+  const [tab, setTab] = useState<"host" | "join">(
+    joinCode ? "join" : savedGuest ? "join" : "host",
+  );
   const [hostName, setHostName] = useState("");
   const [joinName, setJoinName] = useState("");
-  const [codeInput, setCodeInput] = useState(joinCode ?? "");
+  const [codeInput, setCodeInput] = useState(joinCode?.replace(/^TARA-/, "") ?? "");
   const [hostError, setHostError] = useState<string | null>(null);
   const [joinNameError, setJoinNameError] = useState<string | null>(null);
   const [joinCodeError, setJoinCodeError] = useState<string | null>(null);
@@ -24,7 +28,7 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
       return;
     }
     socket.emit("room:create", (res) => {
-      onCreate(res.code, res.hostToken);
+      onCreate(res.code, res.hostToken, hostName.trim());
     });
   }
 
@@ -33,9 +37,9 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
       setJoinNameError("Nickname required");
       return;
     }
-    const code = codeInput.trim().toUpperCase();
-    if (!code) {
-      setJoinCodeError("Enter a room code");
+    const code = `TARA-${codeInput.trim().toUpperCase()}`;
+    if (!codeInput.trim()) {
+      setJoinCodeError("Enter the 4-character code");
       return;
     }
     socket.emit("room:join", code, joinName.trim(), null, (res) => {
@@ -44,19 +48,30 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
     });
   }
 
+  function rejoinRoom() {
+    const saved = loadGuest();
+    if (!saved) return;
+    socket.emit("room:join", saved.code, saved.nickname, null, (res) => {
+      if (res.ok) onJoin(saved.code, saved.nickname);
+      else {
+        clearGuest();
+        setTab("join");
+        setJoinCodeError(res.error ?? "That room has ended");
+      }
+    });
+  }
+
   function resumeHosting() {
     const saved = loadHost();
     if (!saved) return;
-    socket.emit(
-      "room:join",
-      saved.code,
-      hostName.trim() || "Host",
-      saved.token,
-      (res) => {
-        if (res.ok) onCreate(saved.code, saved.token);
-        else setHostError(res.error ?? "Could not resume");
-      },
-    );
+    const name = saved.name ?? hostName.trim() ?? "Host";
+    socket.emit("room:join", saved.code, name, saved.token, (res) => {
+      if (res.ok) onCreate(saved.code, saved.token, name);
+      else {
+        clearHost();
+        setHostError("That room has ended — create a new one");
+      }
+    });
   }
 
   return (
@@ -82,9 +97,9 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
             role="tab"
             aria-selected={tab === "join"}
             onClick={() => setTab("join")}
-            className={`btn h-12 py-3 text-[10px] ${tab === "join" ? "btn-primary" : "btn-ghost text-arc-500"}`}
+            className={`btn h-12 py-3 text-[10px] ${tab === "join" ? "btn-accent" : "btn-ghost text-arc-500"}`}
           >
-            Join
+            Insert coin
           </button>
         </div>
 
@@ -143,23 +158,39 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
             <label className="mb-1 block text-xs font-semibold tracking-widest text-arc-500 uppercase">
               Room code
             </label>
-            <input
-              value={codeInput}
-              onChange={(e) => {
-                setCodeInput(e.target.value.toUpperCase());
-                setJoinCodeError(null);
-              }}
-              placeholder="TARA-XXXX"
-              className={`crt ${joinCodeError ? "" : "mb-5"} w-full rounded-[4px] border-[3px] border-cab-700 px-3 py-3 text-center font-press text-[13px] text-cyan-500 outline-none placeholder:text-arc-500 focus:border-cyan-500`}
-            />
+            <div
+              className={`crt flex items-center rounded-[4px] border-[3px] border-cab-700 focus-within:border-cyan-500 ${joinCodeError ? "" : "mb-5"}`}
+            >
+              <span className="pl-3 font-press text-[13px] text-arc-500">TARA-</span>
+              <input
+                value={codeInput}
+                onChange={(e) => {
+                  setCodeInput(e.target.value.toUpperCase().slice(0, 4));
+                  setJoinCodeError(null);
+                }}
+                maxLength={4}
+                placeholder="XXXX"
+                aria-label="Room code — last 4 characters"
+                className="w-full bg-transparent py-3 pr-3 pl-1 text-left font-press text-[13px] text-cyan-500 outline-none placeholder:text-arc-500"
+              />
+            </div>
             {joinCodeError && <p className="mb-1.5 text-sm text-red-500">{joinCodeError}</p>}
 
             <button
               onClick={joinRoom}
-              className="btn btn-primary w-full px-6 py-4 text-[10px]"
+              className="btn btn-accent w-full px-6 py-4 text-[10px]"
             >
-              Join
+              Insert coin
             </button>
+
+            {savedGuest && (
+              <button
+                onClick={rejoinRoom}
+                className="btn btn-ghost mt-4 w-full px-6 py-3 text-[9px] text-cyan-500"
+              >
+                Rejoin {savedGuest.code} as {savedGuest.nickname}
+              </button>
+            )}
           </>
         )}
       </section>
