@@ -129,6 +129,149 @@ export async function getTopTracksChart(
   }
 }
 
+interface LastfmTopTracksResponse {
+  toptracks?: {
+    track?: {
+      name?: string;
+      artist?: { name?: string } | string;
+    }[];
+  };
+}
+
+interface LastfmTopTagsResponse {
+  toptags?: {
+    tag?: { name?: string }[];
+  };
+}
+
+const TAG_BLACKLIST = new Set([
+  "seen live",
+  "favorites",
+  "favourite",
+  "favorite",
+  "check out",
+  "male vocalists",
+  "female vocalists",
+  "my favorites",
+  "concerts",
+]);
+
+export function pickGenreTag(tags: string[]): string {
+  for (const tag of tags) {
+    const t = tag.toLowerCase();
+    if (t && !TAG_BLACKLIST.has(t)) return t;
+  }
+  return "";
+}
+
+export async function getArtistTopTracks(
+  artist: string,
+  limit = 12,
+): Promise<SimilarTrack[]> {
+  const key = process.env.LASTFM_API_KEY;
+  if (!key || !artist.trim()) return [];
+  const cacheKey = `#artist:${artist.toLowerCase()}|${limit}`;
+  const cached = similarCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return cached.data;
+  const url = new URL("https://ws.audioscrobbler.com/2.0/");
+  url.searchParams.set("method", "artist.gettoptracks");
+  url.searchParams.set("artist", artist);
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("autocorrect", "1");
+  url.searchParams.set("api_key", key);
+  url.searchParams.set("format", "json");
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const body = (await res.json()) as LastfmTopTracksResponse;
+    const tracks: SimilarTrack[] = (body.toptracks?.track ?? [])
+      .filter((t) => t.name)
+      .map((t) => ({
+        title: t.name ?? "",
+        artist:
+          typeof t.artist === "string" ? t.artist : (t.artist?.name ?? ""),
+      }));
+    similarCache.set(cacheKey, {
+      expires: Date.now() + CACHE_TTL_MS,
+      data: tracks,
+    });
+    return tracks;
+  } catch {
+    return [];
+  }
+}
+
+const tagsCache = new Map<string, { expires: number; data: string[] }>();
+
+export async function getTrackTopTags(
+  track: string,
+  artist: string,
+): Promise<string[]> {
+  const key = process.env.LASTFM_API_KEY;
+  if (!key || !track.trim()) return [];
+  const cacheKey = `#tags:${artist.toLowerCase()}|${track.toLowerCase()}`;
+  const cached = tagsCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return cached.data;
+  const url = new URL("https://ws.audioscrobbler.com/2.0/");
+  url.searchParams.set("method", "track.gettoptags");
+  url.searchParams.set("track", track);
+  url.searchParams.set("artist", artist);
+  url.searchParams.set("autocorrect", "1");
+  url.searchParams.set("api_key", key);
+  url.searchParams.set("format", "json");
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const body = (await res.json()) as LastfmTopTagsResponse;
+    const tags = (body.toptags?.tag ?? [])
+      .map((t) => t.name ?? "")
+      .filter(Boolean);
+    tagsCache.set(cacheKey, {
+      expires: Date.now() + CACHE_TTL_MS,
+      data: tags,
+    });
+    return tags;
+  } catch {
+    return [];
+  }
+}
+
+export async function getTagTopTracks(
+  tag: string,
+  limit = 12,
+): Promise<SimilarTrack[]> {
+  const key = process.env.LASTFM_API_KEY;
+  if (!key || !tag.trim()) return [];
+  const cacheKey = `#tag:${tag.toLowerCase()}|${limit}`;
+  const cached = similarCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) return cached.data;
+  const url = new URL("https://ws.audioscrobbler.com/2.0/");
+  url.searchParams.set("method", "tag.gettoptracks");
+  url.searchParams.set("tag", tag);
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("api_key", key);
+  url.searchParams.set("format", "json");
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const body = (await res.json()) as LastfmTopTracksResponse;
+    const tracks: SimilarTrack[] = (body.toptracks?.track ?? [])
+      .filter((t) => t.name)
+      .map((t) => ({
+        title: t.name ?? "",
+        artist:
+          typeof t.artist === "string" ? t.artist : (t.artist?.name ?? ""),
+      }));
+    similarCache.set(cacheKey, {
+      expires: Date.now() + CACHE_TTL_MS,
+      data: tracks,
+    });
+    return tracks;
+  } catch {
+    return [];
+  }
+}
+
 export async function resolveKaraokeVersions(
   seeds: SearchResult[],
 ): Promise<SearchResult[]> {

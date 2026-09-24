@@ -276,7 +276,7 @@ export function Host({ code, token, nickname, onExit }: Props) {
     ...queue.map((q) => q.videoId),
   ]);
   const addedTitles = new Set(
-    [nowPlaying?.title, ...queue.map((q) => q.title)]
+    [nowPlaying?.title, ...queue.map((q) => q.title), ...history.map((h) => h.title)]
       .filter((t): t is string => !!t)
       .map(normalizeTitle)
       .filter((t) => t.length > 0),

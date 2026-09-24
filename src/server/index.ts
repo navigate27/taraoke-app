@@ -37,11 +37,17 @@ import {
 import {
   SIMILAR_PAGE,
   cleanArtist,
+  getArtistTopTracks,
   getSimilarTracks,
+  getTagTopTracks,
   getTopTracksChart,
+  getTrackTopTags,
+  pickGenreTag,
   resolveKaraokeVersions,
   resolveSimilarTracks,
+  type SimilarTrack,
 } from "./lastfm";
+import { normalizeTitle } from "../shared/songTitle";
 import {
   getTrendingVideos,
   karaokeOnly,
@@ -99,36 +105,106 @@ app.get<{ Querystring: { url?: string } }>(
   },
 );
 
+const BUCKET_SIZE = 4;
+const SUGGESTIONS_TOTAL = 20;
+
 app.get<{
-  Querystring: { seed?: string; artist?: string; page?: string };
+  Querystring: {
+    seed?: string;
+    artist?: string;
+    page?: string;
+    room?: string;
+    exclude?: string;
+  };
 }>("/api/suggestions", async (req, reply) => {
   const seed = (req.query.seed ?? "").trim().slice(0, 120);
   const artist = cleanArtist((req.query.artist ?? "").trim().slice(0, 120));
   const page = (req.query.page ?? "").trim();
 
-  if (page.startsWith("s:") && artist && seed) {
-    const idx = Number(page.slice(2)) || 0;
-    const similar = await getSimilarTracks(artist, seed);
-    const slice = similar.slice(idx, idx + SIMILAR_PAGE);
-    const results = await resolveSimilarTracks(slice);
-    return reply.send({
-      results,
-      nextPageToken:
-        idx + SIMILAR_PAGE < similar.length ? `s:${idx + SIMILAR_PAGE}` : null,
-      mode: "similar",
-    });
-  }
-
   if (artist && seed) {
-    const similar = await getSimilarTracks(artist, seed);
-    if (similar.length > 0) {
-      const results = await resolveSimilarTracks(
-        similar.slice(0, SIMILAR_PAGE),
-      );
+    const roomArtists = [
+      ...new Set(
+        (req.query.room ?? "")
+          .split(",")
+          .map((a) => cleanArtist(a.trim().slice(0, 120)))
+          .filter((a) => a && a.toLowerCase() !== artist.toLowerCase()),
+      ),
+    ].slice(0, 4);
+
+    const seedTitle = normalizeTitle(seed);
+    const seenTitles = new Set<string>([seedTitle]);
+    for (const t of (req.query.exclude ?? "").split(",")) {
+      const n = normalizeTitle(t.trim().slice(0, 120));
+      if (n) seenTitles.add(n);
+    }
+    const usedArtists = new Set<string>([artist.toLowerCase()]);
+
+    const take = (
+      pool: SimilarTrack[],
+      want: number,
+      otherArtistsOnly: boolean,
+    ): SimilarTrack[] => {
+      const out: SimilarTrack[] = [];
+      for (const t of pool) {
+        if (out.length >= want) break;
+        const n = normalizeTitle(t.title);
+        if (!n || seenTitles.has(n)) continue;
+        const aLower = t.artist.toLowerCase();
+        if (otherArtistsOnly && usedArtists.has(aLower)) continue;
+        seenTitles.add(n);
+        usedArtists.add(aLower);
+        out.push(t);
+      }
+      return out;
+    };
+
+    const [similarAll, artistTracks, tags, chart] = await Promise.all([
+      getSimilarTracks(artist, seed),
+      getArtistTopTracks(artist, 12),
+      getTrackTopTags(seed, artist),
+      getTopTracksChart(),
+    ]);
+    const genreTag = pickGenreTag(tags);
+    const [genreTracks, roomPool] = await Promise.all([
+      genreTag ? getTagTopTracks(genreTag, 12) : Promise.resolve([]),
+      Promise.all(
+        roomArtists.map((ra) => getArtistTopTracks(ra, 4)),
+      ).then((lists) => lists.flat()),
+    ]);
+
+    const sameArtist = take(artistTracks, BUCKET_SIZE, false);
+    const similar = take(
+      similarAll.filter((t) => t.artist.toLowerCase() !== artist.toLowerCase()),
+      BUCKET_SIZE,
+      false,
+    );
+    const genre = take(genreTracks, BUCKET_SIZE, true);
+    const room = take(roomPool, BUCKET_SIZE, true);
+    const wildcard = take(chart, BUCKET_SIZE, true);
+
+    const buckets = [sameArtist, similar, genre, room, wildcard];
+    const leftover = [
+      ...artistTracks,
+      ...similarAll,
+      ...genreTracks,
+      ...roomPool,
+      ...chart,
+    ];
+    const filler = take(leftover, SUGGESTIONS_TOTAL, true);
+
+    const ordered: SimilarTrack[] = [];
+    for (let i = 0; i < BUCKET_SIZE; i++) {
+      for (const b of buckets) {
+        if (b[i]) ordered.push(b[i]!);
+      }
+    }
+    const tracks = [...ordered, ...filler].slice(0, SUGGESTIONS_TOTAL);
+
+    if (tracks.length > 0) {
+      const results = await resolveSimilarTracks(tracks);
       return reply.send({
         results,
-        nextPageToken:
-          similar.length > SIMILAR_PAGE ? `s:${SIMILAR_PAGE}` : null,
+        nextPageToken: null,
         mode: "similar",
       });
     }
