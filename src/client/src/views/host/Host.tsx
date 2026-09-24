@@ -173,10 +173,12 @@ export function Host({ code, token, nickname, onExit }: Props) {
     if (nowPlaying) {
       setReveal({ score: randomScore(), nickname: nowPlaying.addedBy });
     }
-    socket.emit("host:action", token, { type: "next" });
   }
 
-  const dismissReveal = useCallback(() => setReveal(null), []);
+  const advanceReveal = useCallback(() => {
+    setReveal(null);
+    socket.emit("host:action", token, { type: "next" });
+  }, [token]);
 
   function handleVideoError() {
     const video = videoRef.current;
@@ -188,6 +190,7 @@ export function Host({ code, token, nickname, onExit }: Props) {
 
   useEffect(() => {
     errorRetriedRef.current = false;
+    setReveal(null);
   }, [videoId]);
 
   useEffect(() => {
@@ -314,7 +317,7 @@ export function Host({ code, token, nickname, onExit }: Props) {
           containerRef={containerRef}
           videoRef={videoRef}
           reveal={reveal}
-          onDismissReveal={dismissReveal}
+          onAdvanceReveal={advanceReveal}
           onVideoPlay={handleVideoPlay}
           onVideoPause={handleVideoPause}
           onVideoEnded={handleVideoEnded}
