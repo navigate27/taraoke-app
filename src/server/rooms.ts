@@ -121,18 +121,22 @@ export function applyHostAction(room: Room, action: HostAction): void {
     case "remove":
       room.queue = room.queue.filter((q) => q.id !== action.itemId);
       break;
-    case "reorder": {
-      const idx = room.queue.findIndex((q) => q.id === action.itemId);
-      if (idx >= 0) {
-        const [item] = room.queue.splice(idx, 1);
-        room.queue.splice(Math.max(0, Math.min(action.toIndex, room.queue.length)), 0, item!);
-      }
-      break;
-    }
     case "clear":
       room.queue = [];
       break;
   }
+}
+
+export function reorderQueueItem(
+  room: Room,
+  itemId: string,
+  toIndex: number,
+): boolean {
+  const idx = room.queue.findIndex((q) => q.id === itemId);
+  if (idx < 0) return false;
+  const [item] = room.queue.splice(idx, 1);
+  room.queue.splice(Math.max(0, Math.min(toIndex, room.queue.length)), 0, item!);
+  return true;
 }
 
 export function removeParticipant(room: Room, socketId: string): string | null {

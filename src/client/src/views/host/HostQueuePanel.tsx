@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -14,6 +14,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { ParticipantChip } from "../../components/ParticipantChip";
 import { SongSuggestions } from "../../components/SongSuggestions";
 import { socket } from "../../lib/socket";
+import { useQueueDrag } from "../../lib/useQueueDrag";
 
 interface Props {
   token: string;
@@ -40,160 +41,12 @@ export function HostQueuePanel({
   onReadd,
   onSuggestionAdd,
 }: Props) {
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [removeItem, setRemoveItem] = useState<QueueItem | null>(null);
   const [tab, setTab] = useState<"next" | "played">("next");
-  const pendingDragRef = useRef<{
-    index: number;
-    startX: number;
-    startY: number;
-    offsetX: number;
-    offsetY: number;
-  } | null>(null);
-  const ghostRef = useRef<HTMLElement | null>(null);
-  const queueRef = useRef<QueueItem[]>([]);
-  const autoScrollRef = useRef<{
-    lastY: number;
-    raf: number;
-  } | null>(null);
-
-  queueRef.current = queue;
+  const { draggingIndex, dragOverIndex, onRowPointerDown } = useQueueDrag(
+    (itemId, toIndex) => socket.emit("queue:reorder", itemId, toIndex),
+  );
   const playedVisible = history.filter((item) => !addedVideoIds.has(item.videoId));
-
-  useEffect(() => {
-    const EDGE_PX = 48;
-    const MAX_SPEED = 14;
-
-    function rowAt(clientY: number): HTMLElement | null {
-      const rows = [
-        ...document.querySelectorAll<HTMLElement>(
-          '[aria-label="Song queue"] [data-next-list] > div',
-        ),
-      ];
-      for (const row of rows) {
-        const rect = row.getBoundingClientRect();
-        if (clientY >= rect.top && clientY <= rect.bottom) return row;
-      }
-      return null;
-    }
-
-    function startAutoScroll(clientY: number) {
-      if (autoScrollRef.current) return;
-      const el = document.querySelector<HTMLElement>(
-        '[aria-label="Song queue"] [data-queue-scroll]',
-      );
-      if (!el) return;
-      const state = { lastY: clientY, raf: 0 };
-      autoScrollRef.current = state;
-      const tick = () => {
-        const rect = el.getBoundingClientRect();
-        let speed = 0;
-        if (state.lastY < rect.top + EDGE_PX) {
-          speed = -Math.ceil(
-            MAX_SPEED * ((rect.top + EDGE_PX - state.lastY) / EDGE_PX),
-          );
-        } else if (state.lastY > rect.bottom - EDGE_PX) {
-          speed = Math.ceil(
-            MAX_SPEED * ((state.lastY - (rect.bottom - EDGE_PX)) / EDGE_PX),
-          );
-        }
-        if (speed !== 0) {
-          el.scrollTop += speed;
-          const over = rowAt(state.lastY);
-          setDragOverIndex(
-            over ? [...(over.parentNode?.childNodes ?? [])].indexOf(over) : null,
-          );
-        }
-        state.raf = requestAnimationFrame(tick);
-      };
-      state.raf = requestAnimationFrame(tick);
-    }
-
-    function stopAutoScroll() {
-      const state = autoScrollRef.current;
-      if (!state) return;
-      cancelAnimationFrame(state.raf);
-      autoScrollRef.current = null;
-    }
-
-    function onPointerMove(e: PointerEvent) {
-      const pending = pendingDragRef.current;
-      if (!pending) return;
-      let ghost = ghostRef.current;
-      if (!ghost) {
-        if (Math.hypot(e.clientX - pending.startX, e.clientY - pending.startY) < 6) return;
-        const rows = [
-          ...document.querySelectorAll<HTMLElement>(
-            '[aria-label="Song queue"] [data-next-list] > div',
-          ),
-        ];
-        const row = rows[pending.index];
-        if (!row) return;
-        const rect = row.getBoundingClientRect();
-        pending.offsetX = e.clientX - rect.left;
-        pending.offsetY = e.clientY - rect.top;
-        ghost = row.cloneNode(true) as HTMLElement;
-        ghost.style.position = "fixed";
-        ghost.style.width = `${rect.width}px`;
-        ghost.style.margin = "0";
-        ghost.style.pointerEvents = "none";
-        ghost.style.opacity = "0.9";
-        ghost.style.zIndex = "60";
-        ghost.style.transform = "rotate(4deg)";
-        ghost.style.left = `${e.clientX - pending.offsetX}px`;
-        ghost.style.top = `${e.clientY - pending.offsetY}px`;
-        document.body.appendChild(ghost);
-        ghostRef.current = ghost;
-        setDraggingIndex(pending.index);
-        startAutoScroll(e.clientY);
-        return;
-      }
-      ghost.style.left = `${e.clientX - pending.offsetX}px`;
-      ghost.style.top = `${e.clientY - pending.offsetY}px`;
-      if (autoScrollRef.current) autoScrollRef.current.lastY = e.clientY;
-      else startAutoScroll(e.clientY);
-      const over = rowAt(e.clientY);
-      setDragOverIndex(over ? [...(over.parentNode?.childNodes ?? [])].indexOf(over) : null);
-    }
-
-    function onPointerUp(e: PointerEvent) {
-      const pending = pendingDragRef.current;
-      const ghost = ghostRef.current;
-      pendingDragRef.current = null;
-      stopAutoScroll();
-      if (!ghost) return;
-      ghost.remove();
-      ghostRef.current = null;
-      const from = pending?.index ?? null;
-      const target = rowAt(e.clientY);
-      let to: number | null = null;
-      if (target) {
-        to = [...(target.parentNode?.childNodes ?? [])].indexOf(target);
-      }
-      if (from !== null && to !== null && from !== to) {
-        const dragged = queueRef.current[from];
-        if (dragged) {
-          socket.emit("host:action", token, {
-            type: "reorder",
-            itemId: dragged.id,
-            toIndex: to,
-          });
-        }
-      }
-      setDraggingIndex(null);
-      setDragOverIndex(null);
-    }
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-      if (autoScrollRef.current) cancelAnimationFrame(autoScrollRef.current.raf);
-      autoScrollRef.current = null;
-    };
-  }, [token]);
 
   return (
     <section className="panel flex flex-col p-5" aria-label="Song queue" data-testid="queue-panel">
@@ -291,18 +144,8 @@ export function HostQueuePanel({
           <div
             key={item.id}
             data-testid={`queue-row-${item.id}`}
-            onPointerDown={(e) => {
-              if (e.button !== 0 || e.pointerType === "touch") return;
-              if ((e.target as HTMLElement).closest("button")) return;
-              pendingDragRef.current = {
-                index,
-                startX: e.clientX,
-                startY: e.clientY,
-                offsetX: 0,
-                offsetY: 0,
-              };
-            }}
-            className={`mb-2.5 cursor-grab select-none rounded-[4px] border-[3px] bg-cab-800 p-2.5 ${
+            onPointerDown={onRowPointerDown(index, item.id)}
+            className={`mb-2.5 cursor-grab select-none rounded-[4px] border-[3px] bg-cab-800 p-2.5 [-webkit-touch-callout:none] ${
               draggingIndex === index
                 ? "border-neon-500 opacity-60 [box-shadow:0_0_12px_rgba(228,59,255,.45)]"
                 : "border-cab-700"
@@ -342,11 +185,7 @@ export function HostQueuePanel({
                 data-tip="Move up"
                 disabled={index === 0}
                 onClick={() =>
-                  socket.emit("host:action", token, {
-                    type: "reorder",
-                    itemId: item.id,
-                    toIndex: index - 1,
-                  })
+                  socket.emit("queue:reorder", item.id, index - 1)
                 }
                 className="btn btn-ghost h-10 w-10 p-0 text-[12px] text-arc-100 disabled:opacity-30"
               >
@@ -358,11 +197,7 @@ export function HostQueuePanel({
                 data-tip="Move down"
                 disabled={index === queue.length - 1}
                 onClick={() =>
-                  socket.emit("host:action", token, {
-                    type: "reorder",
-                    itemId: item.id,
-                    toIndex: index + 1,
-                  })
+                  socket.emit("queue:reorder", item.id, index + 1)
                 }
                 className="btn btn-ghost h-10 w-10 p-0 text-[12px] text-arc-100 disabled:opacity-30"
               >

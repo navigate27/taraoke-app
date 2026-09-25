@@ -30,6 +30,7 @@ import {
   getRoom,
   publicState,
   removeParticipant,
+  reorderQueueItem,
   sweepRooms,
   touchRoom,
   MAX_QUEUE_SIZE,
@@ -404,6 +405,18 @@ io.on("connection", (socket) => {
     touchRoom(room);
     callback({ ok: true, position: room.queue.length });
     io.to(code).emit("roomState", publicState(room));
+  });
+
+  // Any room participant (host or guest) may reorder the shared queue.
+  socket.on("queue:reorder", (itemId, toIndex) => {
+    const code = socket.data.roomCode;
+    if (!code) return;
+    const room = getRoom(code);
+    if (!room) return;
+    if (reorderQueueItem(room, itemId, toIndex)) {
+      touchRoom(room);
+      io.to(code).emit("roomState", publicState(room));
+    }
   });
 
   socket.on("host:action", (token, action) => {

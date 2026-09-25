@@ -4,6 +4,8 @@ import type { QueueItem } from "../../../../shared/types";
 import type { SearchResult } from "../../../../server/youtube";
 import { ParticipantChip } from "../../components/ParticipantChip";
 import { SongSuggestions } from "../../components/SongSuggestions";
+import { socket } from "../../lib/socket";
+import { useQueueDrag } from "../../lib/useQueueDrag";
 
 interface Props {
   queue: QueueItem[];
@@ -29,6 +31,9 @@ export function GuestQueuePanel({
   onSuggestionAdd,
 }: Props) {
   const [tab, setTab] = useState<"next" | "played">("next");
+  const { draggingIndex, dragOverIndex, onRowPointerDown } = useQueueDrag(
+    (itemId, toIndex) => socket.emit("queue:reorder", itemId, toIndex),
+  );
   const playedVisible = history.filter((item) => !addedVideoIds.has(item.videoId));
   return (
     <section className="panel flex flex-col p-5" aria-label="Song queue" data-testid="queue-panel">
@@ -113,19 +118,32 @@ export function GuestQueuePanel({
             Played
           </button>
         </div>
-        <div className="scroll-thin mb-3 max-h-[360px] min-h-0 flex-1 overflow-y-auto pr-1">
+        <div
+          className="scroll-thin mb-3 max-h-[360px] min-h-0 flex-1 overflow-y-auto pr-1"
+          data-queue-scroll
+        >
         {tab === "next" && queue.length === 0 && (
           <p data-testid="queue-empty" className="mb-3 text-sm text-arc-500">
             Queue is empty.
           </p>
         )}
-        {tab === "next" &&
-          queue.map((item, index) => (
+        {tab === "next" && (
+        <div data-next-list>
+          {queue.map((item, index) => (
           <div
             key={item.id}
             data-testid={`queue-row-${item.id}`}
-            className={`mb-2.5 grid grid-cols-[28px_80px_1fr] items-center gap-3 rounded-[4px] border-[3px] bg-cab-800 p-2.5 ${
+            onPointerDown={onRowPointerDown(index, item.id)}
+            className={`mb-2.5 grid cursor-grab select-none grid-cols-[28px_80px_1fr] items-center gap-3 rounded-[4px] border-[3px] bg-cab-800 p-2.5 [-webkit-touch-callout:none] ${
               item.addedBy === nickname ? "border-gold-500" : "border-cab-700"
+            } ${
+              draggingIndex === index
+                ? "border-neon-500 opacity-60 [box-shadow:0_0_12px_rgba(228,59,255,.45)]"
+                : ""
+            } ${
+              dragOverIndex === index && draggingIndex !== null && draggingIndex !== index
+                ? "!border-cyan-500 [box-shadow:0_0_12px_rgba(62,240,255,.4)]"
+                : ""
             }`}
           >
             <span className="text-center font-press text-[12px] text-arc-500">
@@ -141,7 +159,9 @@ export function GuestQueuePanel({
               <ParticipantChip nickname={item.addedBy} size="sm" />
             </div>
           </div>
-        ))}
+          ))}
+        </div>
+        )}
         {tab === "played" && playedVisible.length === 0 && (
           <p data-testid="history-empty" className="mb-3 text-sm text-arc-500">
             No songs played yet.

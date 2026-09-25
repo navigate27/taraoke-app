@@ -54,7 +54,6 @@ export type HostAction =
   | { type: "next" }
   | { type: "play-now"; itemId: string }
   | { type: "remove"; itemId: string }
-  | { type: "reorder"; itemId: string; toIndex: number }
   | { type: "clear" };
 
 export type GuestAction =
@@ -101,5 +100,6 @@ export type ClientToServerEvents = {
     },
     callback: (res: { ok: boolean; position?: number; error?: string }) => void,
   ) => void;
+  "queue:reorder": (itemId: string, toIndex: number) => void;
   "room:ping": () => void;
 };

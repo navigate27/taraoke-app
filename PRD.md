@@ -83,6 +83,8 @@ and any guest can control playback — the video and its sound stay on the host 
 - Single shared FIFO queue. Anyone can add; **host controls it**:
   - Play / pause / skip current song.
   - Reorder, remove, or clear queue items.
+  - Anyone in the room can **drag-reorder** the queue — mouse drag on desktop,
+    long-press-then-drag on touch devices.
   - The queue holds up to **50** songs; further adds are rejected with an error.
 - Queue item states: `queued → playing → done` (and `skipped`).
 - Queue panel is organized top-to-bottom: **Now playing**, then a tabbed section
