@@ -61,24 +61,8 @@ export function PlayerControls({
       aria-label="Player controls"
       data-testid="transport-panel"
     >
-      <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-4 max-md:w-fit max-md:mx-auto max-md:grid-cols-[auto_auto] max-md:grid-rows-[auto_auto] max-md:justify-items-center max-md:gap-3">
-        <div className="justify-self-start max-md:col-start-1 max-md:row-start-2 max-md:justify-self-center md:col-start-1 md:row-start-1">
-          {hasAudio && (
-            <button
-              data-testid="transport-btn-mute"
-              onClick={onToggleMute}
-              disabled={!hasSong}
-              aria-label={muted ? "Unmute" : "Mute"}
-              data-tip={muted ? "Unmute" : "Mute"}
-              className={`btn btn-ghost h-12 px-4 disabled:opacity-30 ${
-                muted ? "text-arc-500 opacity-70" : `text-cyan-500`
-              }`}
-            >
-              {muted ? <VolumeX className="h-5 w-5" /> : <IconSoundOn className="h-5 w-5" />}
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2 md:gap-4 max-md:col-span-2 max-md:col-start-1 max-md:row-start-1 max-md:justify-self-center md:col-start-2 md:row-start-1">
+      <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-4 max-md:flex max-md:w-fit max-md:flex-col max-md:mx-auto max-md:gap-3">
+        <div className="flex items-center gap-2 md:gap-4 md:col-start-2 md:row-start-1">
           <button
             data-testid="transport-btn-repeat"
             onClick={onToggleRepeat}
@@ -131,7 +115,24 @@ export function PlayerControls({
             ⏭
           </button>
         </div>
-        <div className="justify-self-end max-md:col-start-2 max-md:row-start-2 max-md:justify-self-center md:col-start-3 md:row-start-1">
+        <div className="flex items-center justify-center gap-6 md:contents">
+          <div className="justify-self-start md:col-start-1 md:row-start-1">
+            {hasAudio && (
+              <button
+                data-testid="transport-btn-mute"
+                onClick={onToggleMute}
+                disabled={!hasSong}
+                aria-label={muted ? "Unmute" : "Mute"}
+                data-tip={muted ? "Unmute" : "Mute"}
+                className={`btn btn-ghost h-12 px-4 disabled:opacity-30 ${
+                  muted ? "text-arc-500 opacity-70" : `text-cyan-500`
+                }`}
+              >
+                {muted ? <VolumeX className="h-5 w-5" /> : <IconSoundOn className="h-5 w-5" />}
+              </button>
+            )}
+          </div>
+          <div className="justify-self-end md:col-start-3 md:row-start-1">
           {fullscreen && (
             <button
               data-testid="transport-btn-fullscreen"
@@ -146,6 +147,7 @@ export function PlayerControls({
               <Scale className="h-5 w-5" />
             </button>
           )}
+          </div>
         </div>
       </div>
     </div>
