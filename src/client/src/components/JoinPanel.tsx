@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import QRCode from "qrcode";
 import type { PublicRoomState } from "../../../shared/types";
 import { buildJoinUrl } from "../lib/joinUrl";
-import { ParticipantChips } from "./ParticipantChips";
+import { ParticipantList } from "./ParticipantList";
 
 interface Props {
   code: string;
@@ -14,6 +14,26 @@ interface Props {
 export function JoinPanel({ code, participants, collapsibleJoin = false, children }: Props) {
   const [qrUrl, setQrUrl] = useState("");
   const [joinOpen, setJoinOpen] = useState(!collapsibleJoin);
+  // Every arrival drops a coin into the slot; each join gets a fresh key so
+  // the one-shot CSS animation replays.
+  const [coinKey, setCoinKey] = useState(0);
+  const [coinVisible, setCoinVisible] = useState(false);
+  const knownRef = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    const names = participants.map((p) => p.nickname);
+    if (knownRef.current === null) {
+      knownRef.current = new Set(names);
+      return;
+    }
+    if (names.some((n) => !knownRef.current!.has(n))) {
+      for (const n of names) knownRef.current!.add(n);
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        setCoinKey((k) => k + 1);
+        setCoinVisible(true);
+      }
+    }
+  }, [participants]);
 
   useEffect(() => {
     buildJoinUrl(code)
@@ -73,13 +93,22 @@ export function JoinPanel({ code, participants, collapsibleJoin = false, childre
           </p>
           <p
             data-testid="join-blink"
-            className="coin-blink mt-3 text-center font-press text-[9px] text-gold-500"
+            className="coin-blink relative mt-3 text-center font-press text-[9px] text-gold-500"
           >
+            {coinVisible && coinKey > 0 && (
+              <span
+                key={coinKey}
+                data-testid="join-coin"
+                aria-hidden="true"
+                className="coin coin-drop absolute left-1/2 -ml-2 -top-5"
+                onAnimationEnd={() => setCoinVisible(false)}
+              />
+            )}
             Insert coin to join
           </p>
         </>
       )}
-      <ParticipantChips participants={participants} />
+      <ParticipantList participants={participants} />
       {children}
     </section>
   );

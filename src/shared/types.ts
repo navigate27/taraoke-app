@@ -16,6 +16,10 @@ export interface Participant {
   nickname: string;
   joinedAt: number;
   lastSeen: number;
+  /** Timestamp of a dropped socket; null while the socket is connected. */
+  disconnectedAt: number | null;
+  /** Score from the singer's most recent revealed performance; null if none. */
+  lastScore: number | null;
 }
 
 export interface Room {
@@ -33,10 +37,16 @@ export interface Room {
 
 export interface PublicRoomState {
   code: string;
+  /** Room creation time (ms) — drives the session runtime clock. */
+  sessionStartedAt: number;
   nowPlaying: QueueItem | null;
   queue: QueueItem[];
   history: QueueItem[];
-  participants: { nickname: string; isHost: boolean }[];
+  participants: {
+    nickname: string;
+    isHost: boolean;
+    lastScore: number | null;
+  }[];
 }
 
 export interface PlayerState {
@@ -82,11 +92,19 @@ export type ClientToServerEvents = {
     hostToken: string | null,
     callback: (res: { ok: boolean; error?: string }) => void,
   ) => void;
+  /** Validation only — no room membership, no participantJoined broadcast. */
+  "room:check": (
+    code: string,
+    hostToken: string | null,
+    callback: (res: { ok: boolean; error?: string }) => void,
+  ) => void;
   "room:leave": () => void;
   "room:end": (
     token: string,
     callback: (res: { ok: boolean }) => void,
   ) => void;
+  /** Host reports a performance score once its reveal animation finishes. */
+  "host:score": (token: string, nickname: string, score: number) => void;
   "host:action": (token: string, action: HostAction) => void;
   "player:state": (token: string, state: PlayerState) => void;
   "guest:action": (action: GuestAction) => void;

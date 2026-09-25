@@ -68,8 +68,8 @@ export function PlayerControls({
             onClick={onToggleRepeat}
             disabled={!canControl}
             aria-pressed={repeatOn}
-            aria-label="Repeat this song"
-            data-tip={repeatOn ? "Repeat on" : "Repeat"}
+            aria-label="Replay this song"
+            data-tip={repeatOn ? "Replay on" : "Replay"}
             className={`btn btn-ghost h-14 w-14 max-md:h-12 max-md:w-12 p-0 text-[12px] disabled:opacity-30 ${
               repeatOn ? `text-cyan-500` : "text-arc-100"
             }`}

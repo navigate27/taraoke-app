@@ -8,6 +8,12 @@ import type {
 
 const ROOM_IDLE_MS = 3 * 60 * 60 * 1000;
 const PARTICIPANT_TIMEOUT_MS = 60 * 1000;
+/**
+ * Mobile browsers kill the socket as soon as the tab is backgrounded, so a
+ * dropped socket gets this long to reconnect before the seat is given up.
+ * Owner call (2026-09-26): an hour, to cover long phone switches at a party.
+ */
+export const RECONNECT_GRACE_MS = 60 * 60 * 1000;
 
 export const MAX_QUEUE_SIZE = 50;
 
@@ -60,12 +66,14 @@ export function touchRoom(room: Room): void {
 export function publicState(room: Room): PublicRoomState {
   return {
     code: room.code,
+    sessionStartedAt: room.createdAt,
     nowPlaying: room.nowPlaying,
     queue: room.queue,
     history: room.history,
     participants: [...room.participants.values()].map((p) => ({
       nickname: p.nickname,
       isHost: p.socketId === room.hostSocketId,
+      lastScore: p.lastScore,
     })),
   };
 }
@@ -146,19 +154,55 @@ export function removeParticipant(room: Room, socketId: string): string | null {
   return participant.nickname;
 }
 
+export function scoreParticipant(room: Room, nickname: string, score: number): void {
+  for (const participant of room.participants.values()) {
+    if (participant.nickname === nickname) {
+      participant.lastScore = score;
+    }
+  }
+}
+
+export function markDisconnected(room: Room, socketId: string): void {
+  const participant = room.participants.get(socketId);
+  if (participant) participant.disconnectedAt = Date.now();
+}
+
+/**
+ * A join with an existing nickname replaces the prior seat — it is the same
+ * person returning (backgrounded tab, refresh, or a re-join after a socket
+ * drop), not a new participant, so it must not be announced. Also covers the
+ * race where the returning client's join beats the server's processing of
+ * its old socket's disconnect. Returns how many seats were replaced.
+ */
+export function removeStaleSelf(room: Room, nickname: string): number {
+  let removed = 0;
+  for (const [socketId, participant] of room.participants) {
+    if (participant.nickname === nickname) {
+      room.participants.delete(socketId);
+      removed++;
+    }
+  }
+  return removed;
+}
+
 export function sweepRooms(): {
   expiredRooms: string[];
-  leftParticipants: { code: string; nickname: string }[];
+  leftParticipants: { code: string; nickname: string; wasHost: boolean }[];
 } {
   const now = Date.now();
   const expiredRooms: string[] = [];
-  const leftParticipants: { code: string; nickname: string }[] = [];
+  const leftParticipants: { code: string; nickname: string; wasHost: boolean }[] = [];
   for (const [code, room] of rooms) {
     for (const [socketId, participant] of room.participants) {
-      if (now - participant.lastSeen > PARTICIPANT_TIMEOUT_MS) {
-        room.participants.delete(socketId);
-        leftParticipants.push({ code, nickname: participant.nickname });
-      }
+      const stale =
+        participant.disconnectedAt !== null
+          ? now - participant.disconnectedAt > RECONNECT_GRACE_MS
+          : now - participant.lastSeen > PARTICIPANT_TIMEOUT_MS;
+      if (!stale) continue;
+      room.participants.delete(socketId);
+      const wasHost = room.hostSocketId === socketId;
+      if (wasHost) room.hostSocketId = null;
+      leftParticipants.push({ code, nickname: participant.nickname, wasHost });
     }
     if (now - room.lastActivityAt > ROOM_IDLE_MS) {
       rooms.delete(code);

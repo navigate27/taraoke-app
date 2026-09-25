@@ -1,9 +1,20 @@
+import { useEffect, useState } from "react";
+import { formatElapsed } from "../lib/sessionClock";
+
 interface Props {
   code: string;
   remaining: string;
+  sessionStartedAt: number | null;
 }
 
-export function RoomHeader({ code, remaining }: Props) {
+export function RoomHeader({ code, remaining, sessionStartedAt }: Props) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <header
       className="crt mx-6 mt-4 flex items-center justify-between gap-4 rounded-[4px] border-[3px] border-cab-700 px-5 py-3"
@@ -30,9 +41,10 @@ export function RoomHeader({ code, remaining }: Props) {
       </span>
       <span
         data-testid="marquee-clock"
+        title="Session runtime"
         className="font-press text-[14px] text-gold-500 [text-shadow:0_0_10px_rgba(255,210,62,.6)]"
       >
-        {remaining}
+        {formatElapsed(sessionStartedAt, now)}
       </span>
     </header>
   );

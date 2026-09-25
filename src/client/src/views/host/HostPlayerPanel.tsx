@@ -24,6 +24,7 @@ interface Props {
   videoRef: RefObject<HTMLVideoElement | null>;
   reveal: RevealState | null;
   onAdvanceReveal: () => void;
+  onSkipReveal: () => void;
   onVideoPlay: () => void;
   onVideoPause: () => void;
   onVideoEnded: () => void;
@@ -46,6 +47,7 @@ export function HostPlayerPanel({
   videoRef,
   reveal,
   onAdvanceReveal,
+  onSkipReveal,
   onVideoPlay,
   onVideoPause,
   onVideoEnded,
@@ -57,8 +59,8 @@ export function HostPlayerPanel({
   onNext,
 }: Props) {
   return (
-    <section className="panel flex flex-col gap-4 p-5" aria-label="Now playing" data-testid="player-panel">
-      <div className="crt relative min-h-[280px] flex-1 overflow-hidden rounded-[4px] border-[3px] border-cab-700">
+    <section className="panel flex flex-col gap-4 p-5 self-start" aria-label="Now playing" data-testid="player-panel">
+      <div className="crt relative aspect-video w-full overflow-hidden rounded-[4px] border-[3px] border-cab-700">
         {nowPlaying && (
           <span
             data-testid="player-badge-live"
@@ -115,6 +117,7 @@ export function HostPlayerPanel({
             nextChannel={reveal.nextChannel}
             nextThumbnail={reveal.nextThumbnail}
             onAdvance={onAdvanceReveal}
+            onSkip={onSkipReveal}
           />
         )}
         {!nowPlaying && (

@@ -78,9 +78,25 @@ export function Host({ code, token, nickname, onExit }: Props) {
   }
 
   useEffect(() => {
-    socket.emit("room:join", code, nickname, token, (res) => {
-      if (!res.ok) onExit();
-    });
+    const join = () =>
+      socket.emit("room:join", code, nickname, token, (res) => {
+        if (!res.ok) onExit();
+      });
+    join();
+    // Mobile browsers kill the socket when the tab is backgrounded; rejoin
+    // with the host token on the next connection to reclaim the room.
+    let needRejoin = false;
+    const onConnect = () => {
+      if (needRejoin) {
+        needRejoin = false;
+        join();
+      }
+    };
+    const onDisconnect = () => {
+      needRejoin = true;
+    };
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
     const pingTimer = window.setInterval(() => socket.emit("room:ping"), 25000);
     const onRoomState = (s: PublicRoomState) => {
       setState(s);
@@ -142,6 +158,8 @@ export function Host({ code, token, nickname, onExit }: Props) {
     socket.on("playerState", onPlayerState);
     socket.on("playerControl", onPlayerControl);
     return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
       socket.off("roomState", onRoomState);
       socket.off("participantJoined", onParticipantJoined);
       socket.off("participantLeft", onParticipantLeft);
@@ -182,7 +200,21 @@ export function Host({ code, token, nickname, onExit }: Props) {
     }
   }
 
+  // The ranked participant list may only reorder once the reveal animation
+  // finishes, so the score is reported here — not when the song ends.
+  const revealRef = useRef<RevealState | null>(null);
+  revealRef.current = reveal;
+
   const advanceReveal = useCallback(() => {
+    const current = revealRef.current;
+    if (current) {
+      socket.emit("host:score", token, current.nickname, current.score);
+    }
+    setReveal(null);
+    socket.emit("host:action", token, { type: "next" });
+  }, [token]);
+
+  const skipReveal = useCallback(() => {
     setReveal(null);
     socket.emit("host:action", token, { type: "next" });
   }, [token]);
@@ -299,7 +331,11 @@ export function Host({ code, token, nickname, onExit }: Props) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <RoomHeader code={code} remaining={remaining} />
+      <RoomHeader
+        code={code}
+        remaining={remaining}
+        sessionStartedAt={state?.sessionStartedAt ?? null}
+      />
 
       <main className="grid flex-1 grid-cols-1 items-stretch gap-5 p-6 lg:grid-cols-[300px_1fr_340px]">
         <JoinPanel code={code} participants={participants}>
@@ -325,6 +361,7 @@ export function Host({ code, token, nickname, onExit }: Props) {
           videoRef={videoRef}
           reveal={reveal}
           onAdvanceReveal={advanceReveal}
+          onSkipReveal={skipReveal}
           onVideoPlay={handleVideoPlay}
           onVideoPause={handleVideoPause}
           onVideoEnded={handleVideoEnded}

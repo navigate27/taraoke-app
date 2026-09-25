@@ -56,7 +56,7 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
       setJoinCodeError("Enter the 4-character code");
       return;
     }
-    socket.emit("room:join", code, joinName.trim(), null, (res) => {
+    socket.emit("room:check", code, null, (res) => {
       if (res.ok) onJoin(code, joinName.trim());
       else setJoinCodeError(res.error ?? "Could not join");
     });
@@ -65,7 +65,7 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
   function rejoinRoom() {
     const saved = loadGuest();
     if (!saved) return;
-    socket.emit("room:join", saved.code, saved.nickname, null, (res) => {
+    socket.emit("room:check", saved.code, null, (res) => {
       if (res.ok) onJoin(saved.code, saved.nickname);
       else {
         clearGuest();
@@ -79,7 +79,7 @@ export function Home({ joinCode, onCreate, onJoin }: Props) {
     const saved = loadHost();
     if (!saved) return;
     const name = saved.name ?? hostName.trim() ?? "Host";
-    socket.emit("room:join", saved.code, name, saved.token, (res) => {
+    socket.emit("room:check", saved.code, saved.token, (res) => {
       if (res.ok) onCreate(saved.code, saved.token, name);
       else {
         clearHost();

@@ -28,8 +28,11 @@ import {
   createRoom,
   deleteRoom,
   getRoom,
+  markDisconnected,
   publicState,
   removeParticipant,
+  scoreParticipant,
+  removeStaleSelf,
   reorderQueueItem,
   sweepRooms,
   touchRoom,
@@ -306,6 +309,21 @@ io.on("connection", (socket) => {
     callback({ code: room.code, hostToken: room.hostToken });
   });
 
+  // Validation-only: Home checks the code/token before mounting the room
+  // view; the actual join (and its announcement) happens once, in the view.
+  socket.on("room:check", (code, hostToken, callback) => {
+    const room = getRoom(code);
+    if (!room) {
+      callback({ ok: false, error: "Room not found — check the code" });
+      return;
+    }
+    if (hostToken && hostToken !== room.hostToken) {
+      callback({ ok: false, error: "Host session expired" });
+      return;
+    }
+    callback({ ok: true });
+  });
+
   socket.on("room:join", (code, nickname, hostToken, callback) => {
     const room = getRoom(code);
     if (!room) {
@@ -321,31 +339,39 @@ io.on("connection", (socket) => {
       room.hostSocketId = socket.id;
     }
     const isHost = !!hostToken && hostToken === room.hostToken;
+    // A prior seat for this nickname is a returning client (backgrounded
+    // tab, refresh, or re-join after a socket drop) — not a new join.
+    const isRejoin = removeStaleSelf(room, cleanNickname) > 0;
     room.participants.set(socket.id, {
       socketId: socket.id,
       nickname: cleanNickname,
       joinedAt: Date.now(),
       lastSeen: Date.now(),
+      disconnectedAt: null,
+      lastScore: null,
     });
     touchRoom(room);
     socket.join(room.code);
     socket.data.roomCode = room.code;
     socket.data.nickname = cleanNickname;
     callback({ ok: true });
-    if (!(hostToken && hostToken === room.hostToken)) {
+    if (!isHost && !isRejoin) {
       io.to(room.code).emit("participantJoined", cleanNickname);
     }
     io.to(room.code).emit("roomState", publicState(room));
     if (isHost) {
       if (room.playerState) socket.emit("playerState", room.playerState);
     } else {
-      socket.emit("playerState", {
-        videoId: room.nowPlaying?.videoId ?? null,
-        playing: false,
-        positionSec: 0,
-        durationSec: room.nowPlaying?.durationSec ?? 0,
-        repeatOn: false,
-      });
+      socket.emit(
+        "playerState",
+        room.playerState ?? {
+          videoId: room.nowPlaying?.videoId ?? null,
+          playing: false,
+          positionSec: 0,
+          durationSec: room.nowPlaying?.durationSec ?? 0,
+          repeatOn: false,
+        },
+      );
     }
   });
 
@@ -428,6 +454,18 @@ io.on("connection", (socket) => {
     io.to(code).emit("roomState", publicState(room));
   });
 
+  socket.on("host:score", (token, nickname, score) => {
+    const code = socket.data.roomCode;
+    if (!code) return;
+    const room = getRoom(code);
+    if (!room || token !== room.hostToken) return;
+    const cleanNickname = String(nickname).trim().slice(0, 20);
+    const boundedScore = Math.max(0, Math.min(100, Math.round(Number(score))));
+    if (!cleanNickname || !Number.isFinite(boundedScore)) return;
+    scoreParticipant(room, cleanNickname, boundedScore);
+    io.to(code).emit("roomState", publicState(room));
+  });
+
   socket.on("player:state", (token, state: PlayerState) => {
     const code = socket.data.roomCode;
     if (!code) return;
@@ -461,23 +499,24 @@ io.on("connection", (socket) => {
     if (!code) return;
     const room = getRoom(code);
     if (!room) return;
-    if (room.hostSocketId === socket.id) {
-      room.hostSocketId = null;
-      const st = room.playerState;
-      if (st) {
-        io.to(code).emit("playerState", { ...st, playing: false });
-      }
-    }
-    const left = removeParticipant(room, socket.id);
-    if (left) io.to(code).emit("participantLeft", left);
-    io.to(code).emit("roomState", publicState(room));
+    // Mobile browsers kill the socket the moment the tab is backgrounded.
+    // Keep the seat for the grace period; the client rejoins on its next
+    // connection and the sweep gives it up if they never come back.
+    markDisconnected(room, socket.id);
   });
 });
 
 setInterval(() => {
   const { expiredRooms, leftParticipants } = sweepRooms();
-  for (const { code, nickname } of leftParticipants) {
+  for (const { code, nickname, wasHost } of leftParticipants) {
     io.to(code).emit("participantLeft", nickname);
+    if (wasHost) {
+      const room = getRoom(code);
+      const st = room?.playerState;
+      if (room && st) {
+        io.to(code).emit("playerState", { ...st, playing: false });
+      }
+    }
     broadcastRoom(io, code);
   }
   for (const code of expiredRooms) {

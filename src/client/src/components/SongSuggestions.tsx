@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Refresh } from "pixelarticons/react";
 import { normalizeTitle } from "../../../shared/songTitle";
 import type { SearchResult } from "../../../server/youtube";
+import { CoinAddButton } from "./CoinAddButton";
 
 interface SeedSong {
   title: string;
@@ -58,6 +59,8 @@ export function SongSuggestions({
     width: number;
     below: boolean;
   } | null>(null);
+  // A just-added suggestion stays visible until its coin-slot animation ends.
+  const [keepId, setKeepId] = useState<string | null>(null);
   const pagesFetched = useRef(0);
   const inFlightRef = useRef(false);
   const queryRef = useRef("");
@@ -76,6 +79,17 @@ export function SongSuggestions({
   }, [titlePop]);
 
   useEffect(() => cancelPress, []);
+
+  useEffect(() => {
+    if (!keepId) return;
+    const timer = window.setTimeout(() => setKeepId(null), 1200);
+    return () => window.clearTimeout(timer);
+  }, [keepId]);
+
+  const handleAdd = (r: SearchResult) => {
+    setKeepId(r.videoId);
+    onAdd(r);
+  };
 
   const seedOptions: SeedSong[] = [];
   const seenSeeds = new Set<string>();
@@ -190,7 +204,9 @@ export function SongSuggestions({
       });
   }, [nextPageToken, unaddedCount, query]);
 
-  const visible = pool.filter((r) => !isAdded(r)).slice(0, SHOW_COUNT);
+  const visible = pool
+    .filter((r) => !isAdded(r) || r.videoId === keepId)
+    .slice(0, SHOW_COUNT);
 
   const canFetchMore = !!nextPageToken && pagesFetched.current < MAX_PAGES;
 
@@ -295,13 +311,12 @@ export function SongSuggestions({
               <p className="truncate text-sm font-semibold">{r.title}</p>
               <p className="truncate text-xs text-arc-500">{r.channel}</p>
             </div>
-            <button
-              onClick={() => onAdd(r)}
+            <CoinAddButton
+              result={r}
+              added={isAdded(r)}
+              onAdd={handleAdd}
               className="btn btn-accent h-9 px-3 text-[9px]"
-              aria-label={`Add ${r.title} to queue`}
-            >
-              Add
-            </button>
+            />
           </div>
         ))}
       </div>

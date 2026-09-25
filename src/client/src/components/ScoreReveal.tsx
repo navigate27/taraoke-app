@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play } from "pixelarticons/react";
+import { Close, Play } from "pixelarticons/react";
 
 export function randomScore(): number {
   return 60 + Math.floor(Math.random() * 41);
@@ -211,6 +211,7 @@ interface Props {
   nextChannel: string | null;
   nextThumbnail: string | null;
   onAdvance: () => void;
+  onSkip: () => void;
 }
 
 export function ScoreReveal({
@@ -220,6 +221,7 @@ export function ScoreReveal({
   nextChannel,
   nextThumbnail,
   onAdvance,
+  onSkip,
 }: Props) {
   const [rolling, setRolling] = useState(true);
   const [shown, setShown] = useState(60);
@@ -284,6 +286,19 @@ export function ScoreReveal({
       className="crt absolute inset-0 z-20 cursor-pointer overflow-hidden rounded-[4px]"
     >
       {celebrate && <ConfettiBurst />}
+      <button
+        type="button"
+        data-testid="score-reveal-skip"
+        aria-label="Skip scoring and play the next song"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSkip();
+        }}
+        className="absolute top-3 right-3 z-30 flex cursor-pointer items-center gap-1.5 rounded-[4px] border-2 border-cab-700 bg-cab-800/80 px-2.5 py-1.5 font-press text-[9px] uppercase text-arc-500 transition-colors hover:border-red-500 hover:text-red-500"
+      >
+        <Close className="h-3.5 w-3.5" />
+        Skip scoring
+      </button>
       <div className="relative z-10 flex h-full flex-col items-center justify-center gap-5 px-4 text-center">
         <span className="font-press text-[9px] uppercase tracking-[0.12em] text-cyan-500">
         {rolling ? "Scoring your performance" : "Your score is"}

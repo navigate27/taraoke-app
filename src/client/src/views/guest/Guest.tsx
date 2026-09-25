@@ -54,9 +54,25 @@ export function Guest({ code, nickname, onExit }: Props) {
   const localPlayingRef = useRef(false);
 
   useEffect(() => {
-    socket.emit("room:join", code, nickname, null, (res) => {
-      if (!res.ok) onExit();
-    });
+    const join = () =>
+      socket.emit("room:join", code, nickname, null, (res) => {
+        if (!res.ok) onExit();
+      });
+    join();
+    // Mobile browsers kill the socket when the tab is backgrounded; rejoin
+    // on the next connection so the guest keeps their seat.
+    let needRejoin = false;
+    const onConnect = () => {
+      if (needRejoin) {
+        needRejoin = false;
+        join();
+      }
+    };
+    const onDisconnect = () => {
+      needRejoin = true;
+    };
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
     const pingTimer = window.setInterval(() => socket.emit("room:ping"), 25000);
     const onRoomState = (s: PublicRoomState) => setState(s);
     const onParticipantJoined = (joined: string) => {
@@ -85,13 +101,18 @@ export function Guest({ code, nickname, onExit }: Props) {
     socket.on("participantLeft", onParticipantLeft);
     socket.on("playerState", onPlayerState);
     return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
       socket.off("roomState", onRoomState);
       socket.off("participantJoined", onParticipantJoined);
       socket.off("participantLeft", onParticipantLeft);
       socket.off("playerState", onPlayerState);
       window.clearInterval(pingTimer);
       window.clearTimeout(toastTimer.current);
-      socket.emit("room:leave");
+      // No room:leave here — it also fires on page unload (refresh), which
+      // turns a refresh into a leave+rejoin and spams toasts. Leaving the
+      // room view via history emits room:leave in App; a refresh is covered
+      // by the disconnect grace period instead.
     };
   }, [code, nickname, onExit]);
 
@@ -153,7 +174,11 @@ export function Guest({ code, nickname, onExit }: Props) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <RoomHeader code={code} remaining={remaining} />
+      <RoomHeader
+        code={code}
+        remaining={remaining}
+        sessionStartedAt={state?.sessionStartedAt ?? null}
+      />
 
       <main className="grid flex-1 grid-cols-1 items-stretch gap-5 p-6 lg:grid-cols-[300px_1fr_340px]">
         <JoinPanel code={code} participants={participants} collapsibleJoin />

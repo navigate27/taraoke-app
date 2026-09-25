@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Check, Close } from "pixelarticons/react";
+import { Close } from "pixelarticons/react";
 import type { SearchResult } from "../../../server/youtube";
 import { fetchSongs } from "../lib/search";
+import { CoinAddButton } from "./CoinAddButton";
 
 interface Props {
   onClose: () => void;
@@ -170,22 +171,13 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
                       <p className="truncate text-xs font-semibold">{result.title}</p>
                       <p className="text-[11px] text-arc-500">{result.channel}</p>
                     </div>
-                    {added ? (
-                      <Check
-                        role="img"
-                        aria-label="Added"
-                        className="h-4 w-4 text-cyan-500"
-                      />
-                    ) : (
-                      <button
-                        data-testid={`search-btn-add-${result.videoId}`}
-                        onClick={() => onAdd(result)}
-                        className="btn btn-primary px-2.5 py-2.5 text-[8px]"
-                        aria-label={`Add ${result.title} to queue`}
-                      >
-                        Add
-                      </button>
-                    )}
+                    <CoinAddButton
+                      result={result}
+                      added={added}
+                      onAdd={onAdd}
+                      testId={`search-btn-add-${result.videoId}`}
+                      className="btn btn-primary px-2.5 py-2.5 text-[8px]"
+                    />
                   </div>
                 );
               })}
@@ -213,18 +205,13 @@ export function SongsSearchModal({ onClose, onAdd, addedVideoIds }: Props) {
                   <p className="truncate text-xs font-semibold">{result.title}</p>
                   <p className="text-[11px] text-arc-500">{result.channel}</p>
                 </div>
-                {added ? (
-                  <Check role="img" aria-label="Added" className="h-4 w-4 text-cyan-500" />
-                ) : (
-                  <button
-                    data-testid={`search-btn-add-${result.videoId}`}
-                    onClick={() => onAdd(result)}
-                    className="btn btn-primary px-2.5 py-2.5 text-[8px]"
-                    aria-label={`Add ${result.title} to queue`}
-                  >
-                    Add
-                  </button>
-                )}
+                <CoinAddButton
+                  result={result}
+                  added={added}
+                  onAdd={onAdd}
+                  testId={`search-btn-add-${result.videoId}`}
+                  className="btn btn-primary px-2.5 py-2.5 text-[8px]"
+                />
               </div>
             );
           })}

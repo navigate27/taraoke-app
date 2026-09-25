@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Home } from "./views/Home";
-import { Host, saveHost } from "./views/host/Host";
-import { Guest, saveGuest } from "./views/guest/Guest";
+import { Host, loadHost, saveHost } from "./views/host/Host";
+import { Guest, loadGuest, saveGuest } from "./views/guest/Guest";
 import { ScoreLab } from "./views/ScoreLab";
+import { restoreView } from "./lib/sessionRestore";
+import { socket } from "./lib/socket";
 
 type Screen =
   | { view: "home"; joinCode: string | null }
@@ -22,13 +24,17 @@ export default function App() {
     return <ScoreLab />;
   }
 
-  const [screen, setScreen] = useState<Screen>({
-    view: "home",
-    joinCode: codeFromUrl(),
-  });
+  const [screen, setScreen] = useState<Screen>(() =>
+    restoreView(codeFromUrl(), loadHost(), loadGuest()),
+  );
 
   useEffect(() => {
-    const onPop = () => setScreen({ view: "home", joinCode: codeFromUrl() });
+    const onPop = () => {
+      // Leaving the room view via history is a real exit; a refresh/unload
+      // never fires popstate, so it rides the disconnect grace period.
+      socket.emit("room:leave");
+      setScreen({ view: "home", joinCode: codeFromUrl() });
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);

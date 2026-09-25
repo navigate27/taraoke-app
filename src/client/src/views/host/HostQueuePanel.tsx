@@ -56,12 +56,6 @@ export function HostQueuePanel({
       >
         Queue
       </h2>
-      <p
-        data-testid="queue-subheading"
-        className="mt-1 mb-3 font-press text-[9px] tracking-[0.2em] text-gold-500"
-      >
-        — Today's high scores —
-      </p>
 
       <button
         data-testid="queue-btn-add"
