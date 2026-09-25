@@ -63,6 +63,18 @@ const app = Fastify({ logger: true });
 const distDir = path.resolve(import.meta.dirname, "../../dist");
 if (existsSync(distDir)) {
   await app.register(fastifyStatic, { root: distDir });
+  // SPA fallback: client routes like /r/:code are handled by the React app.
+  app.setNotFoundHandler((request, reply) => {
+    const url = request.raw.url ?? "/";
+    if (
+      request.raw.method === "GET" &&
+      !url.startsWith("/api") &&
+      !url.startsWith("/socket.io")
+    ) {
+      return reply.sendFile("index.html");
+    }
+    return reply.code(404).send({ error: "Not found" });
+  });
 }
 
 app.get("/api/health", async () => ({ ok: true }));
