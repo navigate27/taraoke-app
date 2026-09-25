@@ -11,6 +11,8 @@ interface PendingDrag {
   index: number;
   startX: number;
   startY: number;
+  lastX: number;
+  lastY: number;
   offsetX: number;
   offsetY: number;
   active: boolean;
@@ -29,6 +31,7 @@ export function useQueueDrag(onReorder: (itemId: string, toIndex: number) => voi
   const autoScrollRef = useRef<{ lastY: number; raf: number } | null>(null);
   const onReorderRef = useRef(onReorder);
   onReorderRef.current = onReorder;
+  const startGhostRef = useRef<((x: number, y: number) => void) | null>(null);
 
   useEffect(() => {
     function rowAt(clientY: number): HTMLElement | null {
@@ -83,6 +86,36 @@ export function useQueueDrag(onReorder: (itemId: string, toIndex: number) => voi
       autoScrollRef.current = null;
     }
 
+    function queueRows(): HTMLElement[] {
+      return [
+        ...document.querySelectorAll<HTMLElement>(
+          '[aria-label="Song queue"] [data-next-list] > div',
+        ),
+      ];
+    }
+
+    function createGhost(pending: PendingDrag, clientX: number, clientY: number) {
+      const row = queueRows()[pending.index];
+      if (!row) return;
+      const rect = row.getBoundingClientRect();
+      pending.offsetX = clientX - rect.left;
+      pending.offsetY = clientY - rect.top;
+      const ghost = row.cloneNode(true) as HTMLElement;
+      ghost.style.position = "fixed";
+      ghost.style.width = `${rect.width}px`;
+      ghost.style.margin = "0";
+      ghost.style.pointerEvents = "none";
+      ghost.style.opacity = "0.9";
+      ghost.style.zIndex = "60";
+      ghost.style.transform = "rotate(4deg)";
+      ghost.style.left = `${clientX - pending.offsetX}px`;
+      ghost.style.top = `${clientY - pending.offsetY}px`;
+      document.body.appendChild(ghost);
+      ghostRef.current = ghost;
+      setDraggingIndex(pending.index);
+      startAutoScroll(clientY);
+    }
+
     function cleanup(pending: PendingDrag | null) {
       if (pending?.timer) clearTimeout(pending.timer);
       ghostRef.current?.remove();
@@ -96,39 +129,20 @@ export function useQueueDrag(onReorder: (itemId: string, toIndex: number) => voi
     function onPointerMove(e: PointerEvent) {
       const pending = pendingRef.current;
       if (!pending || !pending.active) {
-        // Finger moved before the long press fired — treat as a scroll.
-        if (pending && Math.hypot(e.clientX - pending.startX, e.clientY - pending.startY) >= SCROLL_CANCEL_PX) {
-          cleanup(pending);
+        if (pending) {
+          pending.lastX = e.clientX;
+          pending.lastY = e.clientY;
+          // Finger moved before the long press fired — treat as a scroll.
+          if (Math.hypot(e.clientX - pending.startX, e.clientY - pending.startY) >= SCROLL_CANCEL_PX) {
+            cleanup(pending);
+          }
         }
         return;
       }
       let ghost = ghostRef.current;
       if (!ghost) {
         if (Math.hypot(e.clientX - pending.startX, e.clientY - pending.startY) < GHOST_START_PX) return;
-        const rows = [
-          ...document.querySelectorAll<HTMLElement>(
-            '[aria-label="Song queue"] [data-next-list] > div',
-          ),
-        ];
-        const row = rows[pending.index];
-        if (!row) return;
-        const rect = row.getBoundingClientRect();
-        pending.offsetX = e.clientX - rect.left;
-        pending.offsetY = e.clientY - rect.top;
-        ghost = row.cloneNode(true) as HTMLElement;
-        ghost.style.position = "fixed";
-        ghost.style.width = `${rect.width}px`;
-        ghost.style.margin = "0";
-        ghost.style.pointerEvents = "none";
-        ghost.style.opacity = "0.9";
-        ghost.style.zIndex = "60";
-        ghost.style.transform = "rotate(4deg)";
-        ghost.style.left = `${e.clientX - pending.offsetX}px`;
-        ghost.style.top = `${e.clientY - pending.offsetY}px`;
-        document.body.appendChild(ghost);
-        ghostRef.current = ghost;
-        setDraggingIndex(pending.index);
-        startAutoScroll(e.clientY);
+        createGhost(pending, e.clientX, e.clientY);
         return;
       }
       ghost.style.left = `${e.clientX - pending.offsetX}px`;
@@ -174,15 +188,28 @@ export function useQueueDrag(onReorder: (itemId: string, toIndex: number) => voi
       if (pending) cleanup(pending);
     }
 
+    // Long-pressing a row to drag must not open the browser context menu.
+    function onContextMenu(e: MouseEvent) {
+      if (pendingRef.current || ghostRef.current) e.preventDefault();
+    }
+
+    startGhostRef.current = (x, y) => {
+      const pending = pendingRef.current;
+      if (!pending || ghostRef.current) return;
+      createGhost(pending, x, y);
+    };
+
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerCancel);
     window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("contextmenu", onContextMenu);
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerCancel);
       window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("contextmenu", onContextMenu);
       const pending = pendingRef.current;
       if (pending) cleanup(pending);
     };
@@ -197,6 +224,8 @@ export function useQueueDrag(onReorder: (itemId: string, toIndex: number) => voi
         index,
         startX: e.clientX,
         startY: e.clientY,
+        lastX: e.clientX,
+        lastY: e.clientY,
         offsetX: 0,
         offsetY: 0,
         active: e.pointerType !== "touch",
@@ -205,6 +234,8 @@ export function useQueueDrag(onReorder: (itemId: string, toIndex: number) => voi
       if (e.pointerType === "touch") {
         pending.timer = setTimeout(() => {
           pending.active = true;
+          // Show the tilt immediately so the user sees the drag is live.
+          startGhostRef.current?.(pending.lastX, pending.lastY);
         }, TOUCH_LONG_PRESS_MS);
       }
       pendingRef.current = pending;
