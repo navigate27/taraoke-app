@@ -8,9 +8,12 @@ Instant karaoke rooms PWA — "Tara, kanta na!" Docs live in this repo:
 - **Never read media files** — images, screenshots, PDFs, video. Never use the Read
   tool on any binary/visual asset. Reason: visual data floods and corrupts the
   agent's context. The user has explicitly forbidden this.
-- **Never drive a browser for visual verification** — no Playwright screenshots or
-  page captures in this project. Type-checked code + the user's own eyes are the
-  verification path for anything visual.
+- **No screenshots** — never capture page screenshots; visual sign-off is always the
+  user's.
+- **Headless browser testing is allowed** (owner grant, 2026-09-25): use Playwright
+  headless for functional verification only — DOM snapshots/evaluate, geometry
+  checks, synthetic events (clicks, touch/mouse pointer drags), console logs. Never
+  screenshots, never visual judgement.
 - If a change is visual, describe what changed and let the **user** open it in their
   browser.
 
