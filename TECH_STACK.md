@@ -87,9 +87,20 @@ Idle rooms auto-expire (see PRD §5.6). No database in v1.
   standard media API, `ended` → auto-advance. Guest devices render the synced
   playback state only — no video element, no stream request, no audio; the host
   device is the room's speaker. The host stays the playback source of truth.
+- **PO token minting** (added 2026-09-25, `potoken.ts`): YouTube bot-gates playback
+  from datacenter IPs (the Oracle VM's) with `LOGIN_REQUIRED`. The server solves the
+  BotGuard challenge in Node (`bgutils-js` + a jsdom globals sandbox), mints
+  visitor-bound and content-bound tokens, and attaches them to the InnerTube session
+  and stream URLs; minting failures degrade gracefully to a plain session. Muxed
+  formats come from the ANDROID InnerTube client (WEB no longer serves progressive
+  formats); stream.ts falls back WEB → ANDROID → MWEB. On heavily flagged datacenter
+  IPs PO tokens alone don't clear the gate — the session also sends cookies from a
+  logged-in account via the `YOUTUBE_COOKIE` env var (yt-dlp maintainers' accepted
+  fix; use a throwaway account, never committed).
 - **Accepted trade-off:** raw stream extraction tracks YouTube's player internals
-  (ToS-gray; `youtubei.js` keeps up); risk register lives in PRD §9. A future service
-  worker must bypass `/api/stream`.
+  (ToS-gray; `youtubei.js` keeps up), and the BotGuard challenge format can change
+  without notice — both would need prompt attention if playback breaks; risk register
+  lives in PRD §9. A future service worker must bypass `/api/stream`.
 
 ### Sync model
 
@@ -116,6 +127,7 @@ kr/
       rooms.ts              # room state, TTL, host-token validation
       youtube.ts            # search proxy + cache
       stream.ts             # YouTube stream resolver + range proxy (/api/stream)
+      potoken.ts            # BotGuard PO token minting (bgutils-js + jsdom sandbox)
     shared/
       types.ts              # Room, QueueItem, socket event contracts
 ```

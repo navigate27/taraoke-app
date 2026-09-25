@@ -184,6 +184,7 @@ keeps response times low; the URL-paste fallback always works.
 | Risk | Mitigation |
 |---|---|
 | YouTube stream extraction breaks when YouTube changes player internals | `youtubei.js` is actively maintained; the proxy re-resolves stream URLs on failure and serves an error state the host can skip past. Accepted trade-off per owner decision (2026-09) — replaces the former official-embed-only stance. |
+| YouTube bot-gates playback from datacenter IPs (`LOGIN_REQUIRED` — hits the deployed VM, not local dev) | Server solves the BotGuard challenge and mints PO tokens (`potoken.ts`, bgutils-js + jsdom sandbox); visitor-bound token on the InnerTube session, content-bound token on stream URLs; cookies from a logged-in account via the `YOUTUBE_COOKIE` env var (throwaway account; on flagged datacenter IPs PO tokens alone don't clear the gate). Minting failures degrade to a plain session. YouTube can change the challenge format without notice — if playback suddenly 502s with `LOGIN_REQUIRED`, suspect BotGuard or expired cookies first. |
 | googlevideo stream URLs expire / are IP-bound | In-memory URL cache with TTL + single-flight re-resolve on 403; bytes always flow through the server proxy, never a client redirect. |
 | Search quota exhaustion | N/A — no Data API; InnerTube search has no daily quota. Caching + paste-URL fallback remain. |
 | Karaoke search returns non-karaoke videos | Karaoke/instrumental keyword filter on titles; host previews before play |

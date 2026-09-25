@@ -2,6 +2,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { Innertube } from "youtubei.js";
+import { getPoTokenSession, type PoTokenSession } from "./potoken";
 
 const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 const BROWSER_UA =
@@ -21,18 +22,33 @@ interface CacheSlot {
 
 const cache = new Map<string, CacheSlot>();
 
-let innertubePromise: Promise<Innertube> | null = null;
+let cachedSession: PoTokenSession | null = null;
+let sessionInflight: Promise<PoTokenSession> | null = null;
 
-export function getInnertube(): Promise<Innertube> {
-  if (!innertubePromise) {
-    innertubePromise = Innertube.create({
-      generate_session_locally: true,
-    }).catch((err) => {
-      innertubePromise = null;
-      throw err;
-    });
+async function plainSession(): Promise<PoTokenSession> {
+  const yt = await Innertube.create({ generate_session_locally: true });
+  return { yt, mintContent: async () => null };
+}
+
+// PO-token session (needed for playback from datacenter IPs); if BotGuard
+// minting ever fails, degrade to a plain session and let YouTube decide.
+async function getSession(): Promise<PoTokenSession> {
+  if (cachedSession) return cachedSession;
+  if (!sessionInflight) {
+    sessionInflight = getPoTokenSession()
+      .then((s) => {
+        cachedSession = s;
+        return s;
+      })
+      .finally(() => {
+        sessionInflight = null;
+      });
   }
-  return innertubePromise;
+  try {
+    return await sessionInflight;
+  } catch {
+    return plainSession();
+  }
 }
 
 const CLIENT_FALLBACK = ["WEB", "ANDROID", "MWEB"] as const;
@@ -59,6 +75,7 @@ interface MuxedResolution {
 async function resolveMuxed(
   yt: import("youtubei.js").Innertube,
   videoId: string,
+  mintContent: (videoId: string) => Promise<string | null>,
 ): Promise<MuxedResolution> {
   let lastError: Error | null = null;
   for (const client of CLIENT_FALLBACK) {
@@ -82,8 +99,12 @@ async function resolveMuxed(
       ];
       for (const pick of candidates) {
         if (!pick) continue;
-        const url = await decipherUrl(yt, pick);
+        let url = await decipherUrl(yt, pick);
         if (!url) continue;
+        const contentToken = await mintContent(videoId);
+        if (contentToken) {
+          url += `${url.includes("?") ? "&" : "?"}pot=${contentToken}`;
+        }
         const hardExpiry = streaming.expires
           ? streaming.expires.getTime()
           : Date.now() + MAX_TTL_MS;
@@ -100,8 +121,8 @@ async function resolveMuxed(
 }
 
 async function resolveStream(videoId: string): Promise<ResolvedStream> {
-  const yt = await getInnertube();
-  return resolveMuxed(yt, videoId);
+  const session = await getSession();
+  return resolveMuxed(session.yt, videoId, session.mintContent);
 }
 
 function getStream(videoId: string): Promise<ResolvedStream> {

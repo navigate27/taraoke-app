@@ -1,5 +1,5 @@
 import { normalizeTitle } from "../shared/songTitle";
-import { getInnertube } from "./stream";
+import { getInnertube } from "./potoken";
 
 export interface SearchResult {
   videoId: string;
