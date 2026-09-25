@@ -61,8 +61,8 @@ export function PlayerControls({
       aria-label="Player controls"
       data-testid="transport-panel"
     >
-      <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-4">
-        <div className="justify-self-start">
+      <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-4 max-md:w-fit max-md:mx-auto max-md:grid-cols-[auto_auto] max-md:grid-rows-[auto_auto] max-md:justify-items-center max-md:gap-3">
+        <div className="justify-self-start max-md:col-start-1 max-md:row-start-2 max-md:justify-self-center md:col-start-1 md:row-start-1">
           {hasAudio && (
             <button
               data-testid="transport-btn-mute"
@@ -78,7 +78,7 @@ export function PlayerControls({
             </button>
           )}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4 max-md:col-span-2 max-md:col-start-1 max-md:row-start-1 max-md:justify-self-center md:col-start-2 md:row-start-1">
           <button
             data-testid="transport-btn-repeat"
             onClick={onToggleRepeat}
@@ -86,7 +86,7 @@ export function PlayerControls({
             aria-pressed={repeatOn}
             aria-label="Repeat this song"
             data-tip={repeatOn ? "Repeat on" : "Repeat"}
-            className={`btn btn-ghost h-14 w-14 p-0 text-[12px] disabled:opacity-30 ${
+            className={`btn btn-ghost h-14 w-14 max-md:h-12 max-md:w-12 p-0 text-[12px] disabled:opacity-30 ${
               repeatOn ? `text-cyan-500` : "text-arc-100"
             }`}
           >
@@ -97,7 +97,7 @@ export function PlayerControls({
             onClick={() => onSeek(-10)}
             disabled={!canControl}
             aria-label="Back 10 seconds"
-            className="btn btn-ghost h-14 px-3 text-[10px] text-arc-100 disabled:opacity-30"
+            className="btn btn-ghost h-14 max-md:h-12 px-3 max-md:px-2 text-[10px] text-arc-100 disabled:opacity-30"
           >
             -10
           </button>
@@ -107,7 +107,7 @@ export function PlayerControls({
             disabled={!canControl}
             aria-label={playing ? "Pause" : "Play"}
             data-tip={playing ? "Pause" : "Play"}
-            className="btn btn-primary h-16 w-16 text-[14px] disabled:opacity-30"
+            className="btn btn-primary h-16 max-md:h-14 w-16 max-md:w-14 text-[14px] disabled:opacity-30"
           >
             {playing ? "❚❚" : "▶"}
           </button>
@@ -116,7 +116,7 @@ export function PlayerControls({
             onClick={() => onSeek(10)}
             disabled={!canControl}
             aria-label="Forward 10 seconds"
-            className="btn btn-ghost h-14 px-3 text-[10px] text-arc-100 disabled:opacity-30"
+            className="btn btn-ghost h-14 max-md:h-12 px-3 max-md:px-2 text-[10px] text-arc-100 disabled:opacity-30"
           >
             +10
           </button>
@@ -126,12 +126,12 @@ export function PlayerControls({
             disabled={!canControl}
             aria-label="Next — play the next song"
             data-tip="Next"
-            className="btn btn-ghost h-14 w-14 p-0 text-[12px] text-arc-100 disabled:opacity-30"
+            className="btn btn-ghost h-14 max-md:h-12 w-14 max-md:w-12 p-0 text-[12px] text-arc-100 disabled:opacity-30"
           >
             ⏭
           </button>
         </div>
-        <div className="justify-self-end">
+        <div className="justify-self-end max-md:col-start-2 max-md:row-start-2 max-md:justify-self-center md:col-start-3 md:row-start-1">
           {fullscreen && (
             <button
               data-testid="transport-btn-fullscreen"
