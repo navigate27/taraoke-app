@@ -1,0 +1,17 @@
+[Unit]
+Description=Taraoke karaoke rooms server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/taraoke
+ExecStart=/usr/bin/pnpm start
+Restart=on-failure
+RestartSec=5
+# The app reads .env from the repo root itself (LASTFM_API_KEY); no secrets here.
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

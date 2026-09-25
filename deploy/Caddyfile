@@ -1,0 +1,5 @@
+# Replace karaoke.example.com with your subdomain.
+# Caddy automatically issues and renews the Let's Encrypt certificate.
+karaoke.example.com {
+	reverse_proxy 127.0.0.1:3001
+}
