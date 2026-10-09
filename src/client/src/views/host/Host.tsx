@@ -120,6 +120,20 @@ export function Host({ code, token, nickname, onExit }: Props) {
         socket.emit("host:action", token, { type: "next" });
         return;
       }
+      if (action.type === "play-now") {
+        socket.emit("host:action", token, {
+          type: "play-now",
+          itemId: action.itemId,
+        });
+        return;
+      }
+      if (action.type === "remove") {
+        socket.emit("host:action", token, {
+          type: "remove",
+          itemId: action.itemId,
+        });
+        return;
+      }
       if (action.type === "repeat") {
         repeatRef.current = action.on;
         setRepeatOn(action.on);

@@ -71,7 +71,9 @@ export type GuestAction =
   | { type: "pause" }
   | { type: "seek"; positionSec: number }
   | { type: "next" }
-  | { type: "repeat"; on: boolean };
+  | { type: "repeat"; on: boolean }
+  | { type: "play-now"; itemId: string }
+  | { type: "remove"; itemId: string };
 
 export type ServerToClientEvents = {
   roomState: (state: PublicRoomState) => void;
