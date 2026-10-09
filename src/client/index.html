@@ -3,6 +3,46 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    // TV browsers shrink the CSS viewport by device pixel ratio (a 1080p TV
+    // engine can report ~640 CSS px), which routes the app to its mobile
+    // layout. When the physical screen is large but the CSS viewport is phone-
+    // sized, widen the layout viewport so the desktop layout renders. Some
+    // embedded TV engines only report real metrics after load, so re-check
+    // then and on resize.
+    (function () {
+      var applied = false;
+      function apply() {
+        if (applied) return;
+        var dpr = window.devicePixelRatio || 1;
+        // Some TV engines report real metrics only after load, so re-check.
+        var cssWidth = Math.min(window.innerWidth, window.screen.width);
+        var physicalWidth = Math.round(window.screen.width * dpr);
+        if (cssWidth < 768 && physicalWidth >= 1280) {
+          applied = true;
+          document
+            .querySelector('meta[name="viewport"]')
+            .setAttribute("content", "width=1280");
+          // screen.width keeps the engine's true CSS viewport after the meta
+          // rewrite; use it for the fit ratio. Engines ignore a scripted
+          // initial-scale, so fit via CSS zoom on body instead — zoom on
+          // root would scale the initial containing block itself. The body
+          // keeps the 1280px design width inside the zoom: without it the
+          // body lays out against ICB/zoom and the proportions distort.
+          var zoom = Math.min(1, cssWidth / 1280);
+          if (zoom < 1) {
+            var style = document.createElement("style");
+            style.textContent =
+              "body{zoom:" + zoom + ";width:1280px;margin:0}";
+            document.head.appendChild(style);
+          }
+        }
+      }
+      apply();
+      window.addEventListener("load", apply);
+      window.addEventListener("resize", apply);
+    })();
+  </script>
   <title>Taraoke — instant karaoke rooms</title>
   <meta name="theme-color" content="#0F0A1E" />
   <link rel="icon" type="image/png" href="/icon.png" />
