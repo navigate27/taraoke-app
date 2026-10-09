@@ -229,6 +229,8 @@ export function Guest({ code, nickname, onExit }: Props) {
           nickname={nickname}
           onAddSong={() => setSearchOpen(true)}
           onReadd={addToQueue}
+          onPlayNow={(item) => emitAction({ type: "play-now", itemId: item.id })}
+          onRemove={(item) => emitAction({ type: "remove", itemId: item.id })}
           onSuggestionAdd={addToQueue}
         />
       </main>

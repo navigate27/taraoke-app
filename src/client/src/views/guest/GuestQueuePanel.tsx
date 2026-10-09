@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Music, Redo } from "pixelarticons/react";
+import { Check, Close, Music, Play, Redo } from "pixelarticons/react";
 import type { QueueItem } from "../../../../shared/types";
 import type { SearchResult } from "../../../../server/youtube";
 import { ParticipantChip } from "../../components/ParticipantChip";
@@ -16,6 +16,8 @@ interface Props {
   nickname: string;
   onAddSong: () => void;
   onReadd: (item: QueueItem) => void;
+  onPlayNow: (item: QueueItem) => void;
+  onRemove: (item: QueueItem) => void;
   onSuggestionAdd: (result: SearchResult) => void;
 }
 
@@ -28,6 +30,8 @@ export function GuestQueuePanel({
   nickname,
   onAddSong,
   onReadd,
+  onPlayNow,
+  onRemove,
   onSuggestionAdd,
 }: Props) {
   const [tab, setTab] = useState<"next" | "played">("next");
@@ -128,7 +132,7 @@ export function GuestQueuePanel({
             key={item.id}
             data-testid={`queue-row-${item.id}`}
             onPointerDown={onRowPointerDown(index, item.id)}
-            className={`mb-2.5 grid cursor-grab select-none grid-cols-[28px_80px_1fr] items-center gap-3 rounded-[4px] border-[3px] bg-cab-800 p-2.5 [-webkit-touch-callout:none] ${
+            className={`mb-2.5 grid cursor-grab select-none grid-cols-[28px_80px_1fr_auto] items-center gap-3 rounded-[4px] border-[3px] bg-cab-800 p-2.5 [-webkit-touch-callout:none] ${
               item.addedBy === nickname ? "border-gold-500" : "border-cab-700"
             } ${
               draggingIndex === index
@@ -151,6 +155,28 @@ export function GuestQueuePanel({
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{item.title}</p>
               <ParticipantChip nickname={item.addedBy} size="sm" />
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                aria-label={`Play ${item.title} now`}
+                data-testid={`queue-btn-play-${item.id}`}
+                data-tip="Play now"
+                data-tip-side="left"
+                onClick={() => onPlayNow(item)}
+                className="btn btn-ghost h-9 w-9 p-0 text-arc-100"
+              >
+                <Play className="h-4 w-4" />
+              </button>
+              <button
+                aria-label={`Remove ${item.title}`}
+                data-testid={`queue-btn-remove-${item.id}`}
+                data-tip="Remove"
+                data-tip-side="left"
+                onClick={() => onRemove(item)}
+                className="btn btn-ghost h-9 w-9 p-0 text-red-500"
+              >
+                <Close className="h-4 w-4" />
+              </button>
             </div>
           </div>
           ))}
