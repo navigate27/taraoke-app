@@ -125,11 +125,15 @@
   }
   /* Right-edge buttons: anchor the tooltip to the button's right edge so it
      grows leftward instead of overflowing the panel and causing a
-     horizontal scroll. */
+     horizontal scroll, and center it vertically on the button — the default
+     above-the-button position gets clipped by the queue list's vertical
+     scroller when the row sits at the scroll top. */
   [data-tip-side="left"]::after {
     left: auto;
     right: 0;
-    translate: 0 0;
+    bottom: auto;
+    top: 50%;
+    translate: 0 -50%;
   }
   /* Touch devices "stick" :hover after a tap — only show tooltips on
      hover-capable pointers; :focus-visible still works everywhere. */
